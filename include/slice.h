@@ -17,6 +17,11 @@
 
 #include <assert.h>
 
+#if !defined(NO_STL)
+# include <vector>
+# include <string>
+#endif
+
 namespace beautifulcode
 {
 	namespace detail
@@ -65,6 +70,10 @@ namespace beautifulcode
 		template <typename U> Slice(Slice<U> slice);
 		template <typename U, size_t N> Slice(U(&arr)[N]);
 		explicit Slice(std::initializer_list<ElementType> list);
+#if !defined(NO_STL)
+		template <class _Ty, class _Alloc> Slice(std::vector<_Ty, _Alloc> &vec);
+		template <class _Elem, class _Traits, class _Alloc> Slice(std::basic_string<_Elem, _Traits, _Alloc> &str);
+#endif
 
 		template <typename U> Slice<T>& operator=(Slice<U> slice);
 
@@ -175,6 +184,18 @@ namespace beautifulcode
 	template <typename T>
 	inline Slice<T>::Slice(std::initializer_list<ElementType> list)
 		: length(list.size()), ptr(list.begin()) {}
+
+#if !defined(NO_STL)
+	template <typename T>
+	template <class _Ty, class _Alloc>
+	inline Slice<T>::Slice(std::vector<_Ty, _Alloc> &vec)
+		: length(vec.length()), ptr(vec.data()) {}
+
+	template <typename T>
+	template <class _Elem, class _Traits, class _Alloc>
+	inline Slice<T>::Slice(std::basic_string<_Elem, _Traits, _Alloc> &str)
+		: length(str.length()), ptr(str.data()) {}
+#endif
 
 	template <typename T>
 	template <typename U>
