@@ -71,8 +71,6 @@ namespace beautifulcode
 	public:
 		using ElementType = typename detail::SliceElementType<T>::Ty;
 
-		typedef bool(Predicate)(const ElementType &e);
-
 		size_t length;
 		T *ptr;
 
@@ -145,7 +143,7 @@ namespace beautifulcode
 		Slice<T> get_right_at_first(Slice<const T> s, bool inclusive = true) const noexcept;
 		Slice<T> get_right_at_last(Slice<const T> s, bool inclusive = true) const noexcept;
 
-		T *search(Predicate *predFunc) const noexcept;
+		T *search(std::function<bool(const ElementType &e)> predFunc) const noexcept;
 
 		ptrdiff_t index_of_element(const T *c) const noexcept;
 
@@ -153,12 +151,12 @@ namespace beautifulcode
 		size_t copy_to(Slice<U> dest) const noexcept;
 
 		template <bool SkipEmptyTokens = false>
-		Slice<T> pop_token(Slice<T> delimiters) noexcept;
+		Slice<T> pop_token(Slice<const T> delimiters) noexcept;
 
 		template <bool SkipEmptyTokens = false>
-		Slice<Slice<T>> tokenise(Slice<Slice<T>> tokens, Slice<T> delimiters) noexcept;
+		Slice<Slice<T>> tokenise(Slice<Slice<T>> tokens, Slice<const T> delimiters) noexcept;
 		template <bool SkipEmptyTokens = false>
-		size_t tokenise(std::function<void(Slice<T> token, size_t index)> onToken, Slice<T> delimiters) noexcept;
+		size_t tokenise(std::function<void(Slice<T> token, size_t index)> onToken, Slice<const T> delimiters) noexcept;
 	};
 
 	// specialisation for strings
@@ -459,7 +457,7 @@ namespace beautifulcode
 	}
 
 	template <typename T, bool S>
-	inline T* Slice<T, S>::search(Predicate pred) const noexcept
+	inline T* Slice<T, S>::search(std::function<bool(const ElementType &e)> pred) const noexcept
 	{
 		for (size_t i = 0; i < length; ++i)
 		{
@@ -555,7 +553,7 @@ namespace beautifulcode
 
 	template <typename T, bool S>
 	template <bool SkipEmptyTokens>
-	inline Slice<T> Slice<T, S>::pop_token(Slice<T> delimiters) noexcept
+	inline Slice<T> Slice<T, S>::pop_token(Slice<const T> delimiters) noexcept
 	{
 		size_t offset = 0;
 		if (SkipEmptyTokens)
@@ -576,7 +574,7 @@ namespace beautifulcode
 
 	template <typename T, bool S>
 	template <bool SkipEmptyTokens>
-	inline Slice<Slice<T>> Slice<T, S>::tokenise(Slice<Slice<T>> tokens, Slice<T> delimiters) noexcept
+	inline Slice<Slice<T>> Slice<T, S>::tokenise(Slice<Slice<T>> tokens, Slice<const T> delimiters) noexcept
 	{
 		size_t numTokens = 0;
 		size_t offset = 0;
@@ -610,7 +608,7 @@ namespace beautifulcode
 	}
 	template <typename T, bool S>
 	template <bool SkipEmptyTokens>
-	inline size_t Slice<T, S>::tokenise(std::function<void(Slice<T> token, size_t index)> onToken, Slice<T> delimiters) noexcept
+	inline size_t Slice<T, S>::tokenise(std::function<void(Slice<T> token, size_t index)> onToken, Slice<const T> delimiters) noexcept
 	{
 		size_t numTokens = 0;
 		size_t offset = 0;
