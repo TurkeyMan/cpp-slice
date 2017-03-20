@@ -204,8 +204,8 @@ namespace beautifulcode
 		template<bool SkipEmptyTokens = true>
 		size_t tokenise(std::function<void(Slice<C> token, size_t index)> onToken, Slice<C> delimiters = " \t\n\r") noexcept	{ return ((Slice<C, false>*)this)->tokenise<SkipEmptyTokens>(onToken, delimiters); }
 
-//		int64_t parse_int(bool detectBase = true, int base = 10) const;
-//		double parse_float() const;
+		int64_t parse_int(bool detectBase = true, int base = 10) const noexcept;
+		double parse_float() const noexcept;
 
 		uint32_t hash(uint32_t hash = 0x811C9DC5) const noexcept;
 	};
@@ -383,9 +383,9 @@ namespace beautifulcode
 	namespace detail
 	{
 		// hack to handle slices of slices
-		template <typename T> struct FindImpl								{ static inline bool eq(const T &a, const T &b) { return a == b; } };
-		template <typename U, bool S> struct FindImpl<Slice<U, S>>			{ static inline bool eq(const Slice<U, S> &a, const Slice<U, S> &b) { return a.eq(b); } };
-		template <typename U, bool S> struct FindImpl<const Slice<U, S>>	{ static inline bool eq(const Slice<U, S> &a, const Slice<U, S> &b) { return a.eq(b); } };
+		template <typename T> struct FindImpl								{ static inline bool eq(const T &a, const T &b) noexcept { return a == b; } };
+		template <typename U, bool S> struct FindImpl<Slice<U, S>>			{ static inline bool eq(const Slice<U, S> &a, const Slice<U, S> &b) noexcept { return a.eq(b); } };
+		template <typename U, bool S> struct FindImpl<const Slice<U, S>>	{ static inline bool eq(const Slice<U, S> &a, const Slice<U, S> &b) noexcept { return a.eq(b); } };
 	}
 	template <typename T, bool S>
 	inline size_t Slice<T, S>::find_first(const typename Slice<T, S>::ElementType &c) const noexcept
@@ -629,8 +629,10 @@ namespace beautifulcode
 
 	namespace detail
 	{
-		// TODO: this is pretty lame, use lookup table?
+		// TODO: these are pretty lame! use lookup table? (requires .cpp file)
 		constexpr bool is_whitespace(char c) noexcept { return c == ' ' || c == '\t' || c == '\n' || c == '\r'; }
+		constexpr bool is_hex(char c) noexcept { return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'); }
+		constexpr bool is_number(char c) noexcept { return c >= '0' && c <= '9'; }
 
 		constexpr char to_lower(char c) noexcept { return c >= 'A' && c <= 'Z' ? c | 0x20 : c; }
 		constexpr char to_upper(char c) noexcept { return c >= 'a' && c <= 'z' ? c & ~0x20 : c; }
@@ -963,10 +965,155 @@ namespace beautifulcode
 	}
 
 	template<typename C>
+	inline int64_t Slice<C, true>::parse_int(bool detectBase, int base) const noexcept
+	{
+		const C *s = this->ptr;
+		const C *end = s + this->length;
+
+		if (this->length == 0)
+			return 0; // TODO: perhaps it would be better to throw if the string is not a number?
+
+		if (detectBase)
+		{
+			if (*s == '$')
+			{
+				base = 16;
+				++s;
+			}
+			else if (*s == '0' && detail::to_lower(s[1]) == 'x')
+			{
+				base = 16;
+				s += 2;
+			}
+			else if (detail::to_lower(*s) == 'b')
+			{
+				base = 2;
+				++s;
+			}
+		}
+
+		switch (base)
+		{
+			case 2:
+			{
+				int64_t number = 0;
+				while (s < end && (*s == '0' || *s == '1'))
+				{
+					number = (number << 1) | (*s - '0');
+					++s;
+				}
+				return number;
+			}
+			case 8:
+			{
+				int64_t number = 0;
+				while (s < end && *s >= '0' && *s <= '7')
+				{
+					number = (number << 3) | (*s - '0');
+					++s;
+				}
+				return number;
+			}
+			case 10:
+			{
+				// decimal number
+				bool neg = *s == '-';
+				s += *s == '-' || *s == '+';
+
+				int64_t number = 0;
+				while (s < end && *s >= '0' && *s <= '9')
+				{
+					number = number * 10 + *s - '0';
+					++s;
+				}
+				return neg ? -number : number;
+			}
+			case 16:
+			{
+				int64_t number = 0;
+				while (s < end && detail::is_hex(*s))
+				{
+					number = (number << 4) | (detail::is_number(*s) ? *s - '0' : 10 + (*s | 0x20) - 'a');
+					++s;
+				}
+				return number;
+			}
+			default:
+				assert(false);
+		}
+		return 0;
+	}
+
+	template<typename C>
+	inline double Slice<C, true>::parse_float() const noexcept
+	{
+		const C *s = this->ptr;
+		const C *end = s + this->length;
+
+		bool neg = *s == '-';
+		s += *s == '-' || *s == '+';
+
+		size_t n = 0;
+		while (s < end && *s >= '0' && *s <= '9')
+		{
+			n = n * 10 + *s - '0';
+			++s;
+		}
+
+		double r;
+		if (*s == '.')
+		{
+			++s;
+			size_t f = 0;
+			double fracSize = 1;
+			while (s < end && *s >= '0' && *s <= '9')
+			{
+				f = f * 10 + *s - '0';
+				fracSize *= 10;
+				++s;
+			}
+			r = (double)n + (double)f / fracSize;
+		}
+		else
+			r = (double)n;
+
+		if (neg)
+			r = -r;
+
+		if (*s == 'e' || *s == 'E')
+		{
+			++s;
+			bool negExp = *s == '-';
+			s += *s == '-' || *s == '+';
+
+			int16_t exp = 0;
+			while (s < end && *s >= '0' && *s <= '9')
+			{
+				exp = exp * 10 + *s - '0';
+				++s;
+			}
+
+			// calculate 10^^exp
+			double e = 1;
+			double base = 10;
+			while (exp)
+			{
+				if (exp & 1)
+					e *= base;
+				exp >>= 1;
+				base *= base;
+			}
+			r = !negExp ? r * e : r / e;
+		}
+
+		return r;
+	}
+
+	template<typename C>
 	inline uint32_t Slice<C, true>::hash(uint32_t hash) const noexcept
 	{
 		// TODO: is there a better hash for utf16/utf32?
-		unsigned char *data = (unsigned char *)this->ptr;
+		const unsigned char *data = (const unsigned char *)this->ptr;
 		size_t len = this->length * sizeof(C);
 		for (size_t i = 0; i < len; ++i)
 		{
