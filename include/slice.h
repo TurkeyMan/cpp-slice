@@ -126,15 +126,14 @@ namespace beautifulcode
 		constexpr Slice<T> drop_front(size_t n) const noexcept	{ return slice(n, length); }
 		constexpr Slice<T> drop_back(size_t n) const noexcept	{ return slice(0, length - n); }
 
-		bool exists(const ElementType &c, size_t *index = nullptr) const noexcept;
+		bool contains(const ElementType &c, size_t *index = nullptr) const noexcept;
+		bool contains(Slice<const T> s, size_t *index = nullptr) const noexcept;
+
 		size_t find_first(const ElementType &c) const noexcept;
-		size_t find_first(Slice<const T> s) const noexcept;
 		size_t find_last(const ElementType &c) const noexcept;
+
+		size_t find_first(Slice<const T> s) const noexcept;
 		size_t find_last(Slice<const T> s) const noexcept;
-
-		T *search(Predicate *predFunc) const noexcept;
-
-		ptrdiff_t index_of_element(const T *c) const noexcept;
 
 		Slice<T> get_left_at_first(const ElementType &c, bool inclusive = false) const noexcept;
 		Slice<T> get_left_at_last(const ElementType &c, bool inclusive = false) const noexcept;
@@ -145,6 +144,10 @@ namespace beautifulcode
 		Slice<T> get_left_at_last(Slice<const T> s, bool inclusive = false) const noexcept;
 		Slice<T> get_right_at_first(Slice<const T> s, bool inclusive = true) const noexcept;
 		Slice<T> get_right_at_last(Slice<const T> s, bool inclusive = true) const noexcept;
+
+		T *search(Predicate *predFunc) const noexcept;
+
+		ptrdiff_t index_of_element(const T *c) const noexcept;
 
 		template <typename U>
 		size_t copy_to(Slice<U> dest) const noexcept;
@@ -187,8 +190,17 @@ namespace beautifulcode
 		C* to_cstring(C *buffer, size_t bufferLen) const noexcept;
 //		CString<C> to_stringz() const noexcept;
 
+		size_t find_first_ic(C s) const noexcept;
+		size_t find_last_ic(C s) const noexcept;
+
 		size_t find_first_ic(Slice<const C> s) const noexcept;
 		size_t find_last_ic(Slice<const C> s) const noexcept;
+
+		Slice<C> get_left_at_first_ic(C s, bool inclusive = false) const noexcept;
+		Slice<C> get_left_at_last_ic(C s, bool inclusive = false) const noexcept;
+		Slice<C> get_right_at_first_ic(C s, bool inclusive = true) const noexcept;
+		Slice<C> get_right_at_last_ic(C s, bool inclusive = true) const noexcept;
+
 		Slice<C> get_left_at_first_ic(Slice<const C> s, bool inclusive = false) const noexcept;
 		Slice<C> get_left_at_last_ic(Slice<const C> s, bool inclusive = false) const noexcept;
 		Slice<C> get_right_at_first_ic(Slice<const C> s, bool inclusive = true) const noexcept;
@@ -295,7 +307,7 @@ namespace beautifulcode
 	constexpr Slice<T> Slice<T, S>::slice(size_t first, size_t last) const noexcept
 	{
 		assert(first <= last && last <= length);
-		return Slice<T>((ElementType*)ptr + first, last - first);
+		return{ (ElementType*)ptr + first, last - first };
 	}
 
 	template <typename T, bool S>
@@ -368,9 +380,18 @@ namespace beautifulcode
 	}
 
 	template <typename T, bool S>
-	inline bool Slice<T, S>::exists(const typename Slice<T, S>::ElementType &c, size_t *index) const noexcept
+	inline bool Slice<T, S>::contains(const typename Slice<T, S>::ElementType &c, size_t *index) const noexcept
 	{
 		size_t i = find_first(c);
+		if (index)
+			*index = i;
+		return i != length;
+	}
+
+	template <typename T, bool S>
+	inline bool Slice<T, S>::contains(Slice<const T> s, size_t *index) const noexcept
+	{
+		size_t i = find_first(s);
 		if (index)
 			*index = i;
 		return i != length;
@@ -462,7 +483,7 @@ namespace beautifulcode
 		size_t offset = find_first(c);
 		if (offset != this->length)
 			offset += inclusive ? 1 : 0;
-		return Slice<T>(this->ptr, offset);
+		return{ this->ptr, offset };
 	}
 	template <typename T, bool S>
 	inline Slice<T> Slice<T, S>::get_left_at_last(const typename Slice<T, S>::ElementType &c, bool inclusive) const noexcept
@@ -470,7 +491,7 @@ namespace beautifulcode
 		size_t offset = find_last(c);
 		if (offset != this->length)
 			offset += inclusive ? 1 : 0;
-		return Slice<T>(this->ptr, offset);
+		return{ this->ptr, offset };
 	}
 	template <typename T, bool S>
 	inline Slice<T> Slice<T, S>::get_right_at_first(const typename Slice<T, S>::ElementType &c, bool inclusive) const noexcept
@@ -478,7 +499,7 @@ namespace beautifulcode
 		size_t offset = find_first(c);
 		if (offset != this->length)
 			offset += inclusive ? 0 : 1;
-		return Slice<T>(this->ptr + offset, length - offset);
+		return{ this->ptr + offset, length - offset };
 	}
 	template <typename T, bool S>
 	inline Slice<T> Slice<T, S>::get_right_at_last(const typename Slice<T, S>::ElementType &c, bool inclusive) const noexcept
@@ -486,7 +507,7 @@ namespace beautifulcode
 		size_t offset = find_last(c);
 		if (offset != this->length)
 			offset += inclusive ? 0 : 1;
-		return Slice<T>(this->ptr + offset, length - offset);
+		return{ this->ptr + offset, length - offset };
 	}
 
 	template <typename T, bool S>
@@ -495,7 +516,7 @@ namespace beautifulcode
 		size_t offset = find_first(s);
 		if (offset != this->length)
 			offset += inclusive ? s.length : 0;
-		return Slice<T>(this->ptr, offset);
+		return{ this->ptr, offset };
 	}
 	template <typename T, bool S>
 	inline Slice<T> Slice<T, S>::get_left_at_last(Slice<const T> s, bool inclusive) const noexcept
@@ -503,7 +524,7 @@ namespace beautifulcode
 		size_t offset = find_last(s);
 		if (offset != this->length)
 			offset += inclusive ? s.length : 0;
-		return Slice<T>(this->ptr, offset);
+		return{ this->ptr, offset };
 	}
 	template <typename T, bool S>
 	inline Slice<T> Slice<T, S>::get_right_at_first(Slice<const T> s, bool inclusive) const noexcept
@@ -511,7 +532,7 @@ namespace beautifulcode
 		size_t offset = find_first(s);
 		if (offset != this->length)
 			offset += inclusive ? 0 : s.length;
-		return Slice<T>(this->ptr + offset, length - offset);
+		return{ this->ptr + offset, length - offset };
 	}
 	template <typename T, bool S>
 	inline Slice<T> Slice<T, S>::get_right_at_last(Slice<const T> s, bool inclusive) const noexcept
@@ -519,7 +540,7 @@ namespace beautifulcode
 		size_t offset = find_last(s);
 		if (offset != this->length)
 			offset += inclusive ? 0 : s.length;
-		return Slice<T>(this->ptr + offset, length - offset);
+		return{ this->ptr + offset, length - offset };
 	}
 
 	template <typename T, bool S>
@@ -539,11 +560,11 @@ namespace beautifulcode
 		size_t offset = 0;
 		if (SkipEmptyTokens)
 		{
-			while (offset < length && delimiters.exists(ptr[offset]))
+			while (offset < length && delimiters.contains(ptr[offset]))
 				++offset;
 		}
 		size_t end = offset;
-		while (end < length && !delimiters.exists(ptr[end]))
+		while (end < length && !delimiters.contains(ptr[end]))
 			++end;
 		Slice<T> token = slice(offset, end);
 		if (end < length)
@@ -564,19 +585,19 @@ namespace beautifulcode
 			if (!SkipEmptyTokens)
 			{
 				size_t tokStart = offset;
-				while (offset < length && !delimiters.exists(ptr[offset]))
+				while (offset < length && !delimiters.contains(ptr[offset]))
 					++offset;
 				tokens[numTokens++] = slice(tokStart, offset);
 				++offset;
 			}
 			else
 			{
-				while (offset < length && delimiters.exists(ptr[offset]))
+				while (offset < length && delimiters.contains(ptr[offset]))
 					++offset;
 				if (offset == length)
 					break;
 				size_t tokStart = offset;
-				while (offset < length && !delimiters.exists(ptr[offset]))
+				while (offset < length && !delimiters.contains(ptr[offset]))
 					++offset;
 				tokens[numTokens++] = slice(tokStart, offset);
 			}
@@ -598,18 +619,18 @@ namespace beautifulcode
 			if (!SkipEmptyTokens)
 			{
 				size_t tokStart = offset;
-				while (offset < length && !delimiters.exists(ptr[offset]))
+				while (offset < length && !delimiters.contains(ptr[offset]))
 					++offset;
 				onToken(Slice<T>(ptr + tokStart, offset++), numTokens++);
 			}
 			else
 			{
-				while (offset < length && delimiters.exists(ptr[offset]))
+				while (offset < length && delimiters.contains(ptr[offset]))
 					++offset;
 				if (offset == length)
 					break;
 				size_t tokStart = offset;
-				while (offset < length && !delimiters.exists(ptr[offset]))
+				while (offset < length && !delimiters.contains(ptr[offset]))
 					++offset;
 				onToken(Slice<T>(ptr + tokStart, offset), numTokens++);
 			}
@@ -865,6 +886,25 @@ namespace beautifulcode
 		return buffer;
 	}
 
+	template <typename C>
+	inline size_t Slice<C, true>::find_first_ic(C c) const noexcept
+	{
+		c = detail::to_lower(c);
+		size_t offset = 0;
+		while (offset < this->length && detail::to_lower(this->ptr[offset]) != c)
+			++offset;
+		return offset;
+	}
+	template <typename C>
+	inline size_t Slice<C, true>::find_last_ic(C c) const noexcept
+	{
+		c = detail::to_lower(c);
+		ptrdiff_t last = this->length - 1;
+		while (last >= 0 && detail::to_lower(this->ptr[last]) != c)
+			--last;
+		return last < 0 ? this->length : last;
+	}
+
 	template<typename C>
 	inline size_t Slice<C, true>::find_first_ic(Slice<const C> s) const noexcept
 	{
@@ -901,6 +941,39 @@ namespace beautifulcode
 				return i;
 		}
 		return this->length;
+	}
+
+	template <typename C>
+	inline Slice<C> Slice<C, true>::get_left_at_first_ic(C c, bool inclusive) const noexcept
+	{
+		size_t offset = find_first_ic(c);
+		if (offset != this->length)
+			offset += inclusive ? 1 : 0;
+		return{ this->ptr, offset };
+	}
+	template <typename C>
+	inline Slice<C> Slice<C, true>::get_left_at_last_ic(C c, bool inclusive) const noexcept
+	{
+		size_t offset = find_last_ic(c);
+		if (offset != this->length)
+			offset += inclusive ? 1 : 0;
+		return{ this->ptr, offset };
+	}
+	template <typename C>
+	inline Slice<C> Slice<C, true>::get_right_at_first_ic(C c, bool inclusive) const noexcept
+	{
+		size_t offset = find_first_ic(c);
+		if (offset != this->length)
+			offset += inclusive ? 0 : 1;
+		return{ this->ptr + offset, this->length - offset };
+	}
+	template <typename C>
+	inline Slice<C> Slice<C, true>::get_right_at_last_ic(C c, bool inclusive) const noexcept
+	{
+		size_t offset = find_last_ic(c);
+		if (offset != this->length)
+			offset += inclusive ? 0 : 1;
+		return{ this->ptr + offset, this->length - offset };
 	}
 
 	template<typename C>
