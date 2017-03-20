@@ -26,19 +26,21 @@ namespace beautifulcode
 {
 	namespace detail
 	{
-		template <typename T> struct SliceElementType	{ using Ty = T; };
-		template <> struct SliceElementType<void>		{ using Ty = uint8_t; };
-		template <> struct SliceElementType<const void>	{ using Ty = const uint8_t; };
+		template <typename T> struct SliceElementType		{ using Ty = T; };
+		template <> struct SliceElementType<void>			{ using Ty = uint8_t; };
+		template <> struct SliceElementType<const void>		{ using Ty = const uint8_t; };
 
-		template <typename T> struct IsSomeChar			{ enum { value = false }; };
-		template <> struct IsSomeChar<char>				{ enum { value = true }; };
-		template <> struct IsSomeChar<const char>		{ enum { value = true }; };
-		template <> struct IsSomeChar<char16_t>			{ enum { value = true }; };
-		template <> struct IsSomeChar<const char16_t>	{ enum { value = true }; };
-		template <> struct IsSomeChar<char32_t>			{ enum { value = true }; };
-		template <> struct IsSomeChar<const char32_t>	{ enum { value = true }; };
-		template <> struct IsSomeChar<wchar_t>			{ enum { value = true }; };
-		template <> struct IsSomeChar<const wchar_t>	{ enum { value = true }; };
+		template <typename T> struct IsSomeChar				{ enum { value = false }; };
+		template <> struct IsSomeChar<char>					{ enum { value = true }; };
+		template <> struct IsSomeChar<const char>			{ enum { value = true }; };
+		template <> struct IsSomeChar<unsigned char>		{ enum { value = true }; };
+		template <> struct IsSomeChar<const unsigned char>	{ enum { value = true }; };
+		template <> struct IsSomeChar<char16_t>				{ enum { value = true }; };
+		template <> struct IsSomeChar<const char16_t>		{ enum { value = true }; };
+		template <> struct IsSomeChar<char32_t>				{ enum { value = true }; };
+		template <> struct IsSomeChar<const char32_t>		{ enum { value = true }; };
+		template <> struct IsSomeChar<wchar_t>				{ enum { value = true }; };
+		template <> struct IsSomeChar<const wchar_t>		{ enum { value = true }; };
 	}
 
 	// support for C++ iterators
@@ -88,7 +90,7 @@ namespace beautifulcode
 		template <typename U, bool S> Slice<T, IsString>& operator=(Slice<U, S> slice);
 
 		ElementType& at(size_t i) const;
-		ElementType& operator[](size_t i) const	{ return at(i); }
+		ElementType& operator[](size_t i) const;
 
 		Slice<T> slice(size_t first, size_t last) const;
 
@@ -236,7 +238,8 @@ namespace beautifulcode
 		: length(0), ptr(nullptr) {}
 
 	template <typename T, bool S>
-	inline Slice<T, S>::Slice(T* ptr, size_t length) : length(length), ptr(ptr) {}
+	inline Slice<T, S>::Slice(T* ptr, size_t length)
+		: length(length), ptr(ptr) {}
 
 	template <typename T, bool S>
 	template <typename U, bool S2>
@@ -276,8 +279,16 @@ namespace beautifulcode
 	template <typename T, bool S>
 	inline typename Slice<T, S>::ElementType& Slice<T, S>::at(size_t i) const
 	{
-		assert(offset < length);
-		return ((ElementType*)ptr)[offset];
+		if (i >= length)
+			throw std::out_of_range("Index out of bounds");
+		return ((ElementType*)ptr)[i];
+	}
+
+	template <typename T, bool S>
+	inline typename Slice<T, S>::ElementType& Slice<T, S>::operator[](size_t i) const
+	{
+		assert(i < length);
+		return ((ElementType*)ptr)[i];
 	}
 
 	template <typename T, bool S>
@@ -624,7 +635,7 @@ namespace beautifulcode
 		inline char to_lower(char c) { return c >= 'A' && c <= 'Z' ? c | 0x20 : c; }
 		inline char to_upper(char c) { return c >= 'a' && c <= 'z' ? c & ~0x20 : c; }
 
-		inline size_t utf_decode(const char *utf8, char32_t *c)
+		inline size_t utf_decode(const unsigned char *utf8, char32_t *c)
 		{
 			if (utf8[0] < 128)
 			{
@@ -705,10 +716,10 @@ namespace beautifulcode
 		return r;
 	}
 	template<>
-	inline char32_t Slice<const char, true>::back_char() const
+	inline char32_t Slice<const unsigned char, true>::back_char() const
 	{
 		assert(this->length > 0);
-		const char *last = ptr + length - 1;
+		const unsigned char *last = ptr + length - 1;
 		if (*last < 128)
 			return *last;
 		do --last;
@@ -718,7 +729,11 @@ namespace beautifulcode
 		return r;
 	}
 	template<>
-	inline char32_t Slice<char, true>::back_char() const { return ((Slice<const char, true>*)this)->back_char(); }
+	inline char32_t Slice<unsigned char, true>::back_char() const { return ((Slice<const unsigned char, true>*)this)->back_char(); }
+	template<>
+	inline char32_t Slice<const char, true>::back_char() const { return ((Slice<const unsigned char, true>*)this)->back_char(); }
+	template<>
+	inline char32_t Slice<char, true>::back_char() const { return ((Slice<const unsigned char, true>*)this)->back_char(); }
 	template<>
 	inline char32_t Slice<const char16_t, true>::back_char() const
 	{
@@ -750,7 +765,7 @@ namespace beautifulcode
 		return r;
 	}
 	template<>
-	inline char32_t Slice<const char, true>::pop_back_char()
+	inline char32_t Slice<const unsigned char, true>::pop_back_char()
 	{
 		assert(this->length > 0);
 		if (ptr[length - 1] < 128)
@@ -764,7 +779,11 @@ namespace beautifulcode
 		return r;
 	}
 	template<>
-	inline char32_t Slice<char, true>::pop_back_char() { return ((Slice<const char, true>*)this)->pop_back_char(); }
+	inline char32_t Slice<unsigned char, true>::pop_back_char() { return ((Slice<const unsigned char, true>*)this)->pop_back_char(); }
+	template<>
+	inline char32_t Slice<const char, true>::pop_back_char() { return ((Slice<const unsigned char, true>*)this)->pop_back_char(); }
+	template<>
+	inline char32_t Slice<char, true>::pop_back_char() { return ((Slice<const unsigned char, true>*)this)->pop_back_char(); }
 	template<>
 	inline char32_t Slice<const char16_t, true>::pop_back_char()
 	{
