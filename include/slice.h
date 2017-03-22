@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Authors: Manu Evans
  * Email:   turkeyman@gmail.com
  * License: BSD, go for broke!
@@ -15,11 +15,14 @@
 #include <functional>
 #include <initializer_list>
 
-#include <assert.h>
-
 #if !defined(NO_STL)
 # include <vector>
 # include <string>
+#endif
+
+#if !defined(SLICE_ASSERT)
+# include <assert.h>
+# define SLICE_ASSERT(condition) assert(condition)
 #endif
 
 namespace beautifulcode
@@ -31,45 +34,29 @@ namespace beautifulcode
 		template <> struct SliceElementType<const void>		{ using Ty = const uint8_t; };
 
 		template <typename T> struct IsSomeChar				{ enum { value = false }; };
-		template <> struct IsSomeChar<char>					{ enum { value = true }; };
-		template <> struct IsSomeChar<const char>			{ enum { value = true }; };
-		template <> struct IsSomeChar<unsigned char>		{ enum { value = true }; };
-		template <> struct IsSomeChar<const unsigned char>	{ enum { value = true }; };
-		template <> struct IsSomeChar<char16_t>				{ enum { value = true }; };
-		template <> struct IsSomeChar<const char16_t>		{ enum { value = true }; };
-		template <> struct IsSomeChar<char32_t>				{ enum { value = true }; };
-		template <> struct IsSomeChar<const char32_t>		{ enum { value = true }; };
-		template <> struct IsSomeChar<wchar_t>				{ enum { value = true }; };
-		template <> struct IsSomeChar<const wchar_t>		{ enum { value = true }; };
+		template <> struct IsSomeChar<char>					{ enum { value = true }; using type = int; };
+		template <> struct IsSomeChar<const char>			{ enum { value = true }; using type = int; };
+		template <> struct IsSomeChar<unsigned char>		{ enum { value = true }; using type = int; };
+		template <> struct IsSomeChar<const unsigned char>	{ enum { value = true }; using type = int; };
+		template <> struct IsSomeChar<char16_t>				{ enum { value = true }; using type = int; };
+		template <> struct IsSomeChar<const char16_t>		{ enum { value = true }; using type = int; };
+		template <> struct IsSomeChar<char32_t>				{ enum { value = true }; using type = int; };
+		template <> struct IsSomeChar<const char32_t>		{ enum { value = true }; using type = int; };
+		template <> struct IsSomeChar<wchar_t>				{ enum { value = true }; using type = int; };
+		template <> struct IsSomeChar<const wchar_t>		{ enum { value = true }; using type = int; };
 	}
-
-	// support for C++ iterators
-	template <typename T>
-	class Iterator
-	{
-	public:
-		Iterator(T *ptr) : ptr(ptr) {}
-
-		T &operator*() const { return *ptr; }
-		T *operator->() const { return ptr; }
-
-		bool operator!=(Iterator<T> iter) const { return ptr != iter.ptr; }
-
-		Iterator<T> operator++()
-		{
-			++ptr;
-			return *this;
-		}
-
-	private:
-		T *ptr;
-	};
 
 	template <typename T, bool IsString = detail::IsSomeChar<T>::value>
 	struct Slice
 	{
 	public:
-		using ElementType = typename detail::SliceElementType<T>::Ty;
+		using value_type = typename detail::SliceElementType<T>::Ty;
+		using reference = value_type&;
+		using const_reference = const value_type&;
+		using size_type = size_t;
+		using difference_type = ptrdiff_t;
+		using iterator = value_type*;
+		using const_iterator = const value_type*;
 
 		size_t length;
 		T *ptr;
@@ -79,16 +66,16 @@ namespace beautifulcode
 		constexpr Slice(T* ptr, size_t length) noexcept;
 		template <typename U, bool S> constexpr Slice(Slice<U, S> slice) noexcept;
 		template <typename U, size_t N> constexpr Slice(U(&arr)[N]) noexcept;
-		explicit Slice(std::initializer_list<ElementType> list) noexcept;
+		explicit Slice(std::initializer_list<value_type> list) noexcept;
 #if !defined(NO_STL)
-		template <class _Ty, class _Alloc> Slice(std::vector<_Ty, _Alloc> &vec) noexcept;
-		template <class _Elem, class _Traits, class _Alloc> Slice(std::basic_string<_Elem, _Traits, _Alloc> &str) noexcept;
+		template <class _Ty, class _Alloc> Slice(const std::vector<_Ty, _Alloc> &vec) noexcept;
+		template <class _Elem, class _Traits, class _Alloc> Slice(const std::basic_string<_Elem, _Traits, _Alloc> &str) noexcept;
 #endif
 
 		template <typename U, bool S> Slice<T, IsString>& operator=(Slice<U, S> slice) noexcept;
 
-		constexpr ElementType& at(size_t i) const;
-		constexpr ElementType& operator[](size_t i) const noexcept;
+		constexpr reference at(size_t i) const;
+		constexpr reference operator[](size_t i) const noexcept;
 
 		constexpr Slice<T> slice(size_t first, size_t last) const noexcept;
 
@@ -108,42 +95,44 @@ namespace beautifulcode
 		bool begins_with(Slice<const T> slice) const noexcept;
 		bool ends_with(Slice<const T> slice) const noexcept;
 
-		Iterator<T> begin() const noexcept { return Iterator<T>(&ptr[0]); }
-		Iterator<T> end() const noexcept { return Iterator<T>(&ptr[length]); }
+		iterator begin() const noexcept { return iterator(&ptr[0]); }
+		iterator end() const noexcept { return iterator(&ptr[length]); }
+		iterator cbegin() const noexcept { return const_iterator(&ptr[0]); }
+		iterator cend() const noexcept { return const_iterator(&ptr[length]); }
 
-		constexpr ElementType& front() const noexcept				{ return ((ElementType*)ptr)[0]; }
-		constexpr Slice<ElementType> front(size_t n) const noexcept	{ return slice(0, n); }
-		constexpr ElementType& back() const noexcept				{ return ((ElementType*)ptr)[length - 1]; }
-		constexpr Slice<ElementType> back(size_t n) const noexcept	{ return slice(length - n, length); }
+		constexpr reference front() const noexcept				{ return ((value_type*)ptr)[0]; }
+		constexpr Slice<value_type> front(size_t n) const noexcept	{ return slice(0, n); }
+		constexpr reference back() const noexcept				{ return ((value_type*)ptr)[length - 1]; }
+		constexpr Slice<value_type> back(size_t n) const noexcept	{ return slice(length - n, length); }
 
-		ElementType& pop_front() noexcept;
-		Slice<ElementType> pop_front(size_t n) noexcept;
-		ElementType& pop_back() noexcept;
-		Slice<ElementType> pop_back(size_t n) noexcept;
+		reference pop_front() noexcept;
+		Slice<value_type> pop_front(size_t n) noexcept;
+		reference pop_back() noexcept;
+		Slice<value_type> pop_back(size_t n) noexcept;
 
 		constexpr Slice<T> drop_front(size_t n) const noexcept	{ return slice(n, length); }
 		constexpr Slice<T> drop_back(size_t n) const noexcept	{ return slice(0, length - n); }
 
-		bool contains(const ElementType &c, size_t *index = nullptr) const noexcept;
+		bool contains(const_reference c, size_t *index = nullptr) const noexcept;
 		bool contains(Slice<const T> s, size_t *index = nullptr) const noexcept;
 
-		size_t find_first(const ElementType &c) const noexcept;
-		size_t find_last(const ElementType &c) const noexcept;
+		size_t find_first(const_reference c) const noexcept;
+		size_t find_last(const_reference c) const noexcept;
 
 		size_t find_first(Slice<const T> s) const noexcept;
 		size_t find_last(Slice<const T> s) const noexcept;
 
-		Slice<T> get_left_at_first(const ElementType &c, bool inclusive = false) const noexcept;
-		Slice<T> get_left_at_last(const ElementType &c, bool inclusive = false) const noexcept;
-		Slice<T> get_right_at_first(const ElementType &c, bool inclusive = true) const noexcept;
-		Slice<T> get_right_at_last(const ElementType &c, bool inclusive = true) const noexcept;
+		Slice<T> get_left_at_first(const_reference c, bool inclusive = false) const noexcept;
+		Slice<T> get_left_at_last(const_reference c, bool inclusive = false) const noexcept;
+		Slice<T> get_right_at_first(const_reference c, bool inclusive = true) const noexcept;
+		Slice<T> get_right_at_last(const_reference c, bool inclusive = true) const noexcept;
 
 		Slice<T> get_left_at_first(Slice<const T> s, bool inclusive = false) const noexcept;
 		Slice<T> get_left_at_last(Slice<const T> s, bool inclusive = false) const noexcept;
 		Slice<T> get_right_at_first(Slice<const T> s, bool inclusive = true) const noexcept;
 		Slice<T> get_right_at_last(Slice<const T> s, bool inclusive = true) const noexcept;
 
-		T *search(std::function<bool(const ElementType &e)> predFunc) const noexcept;
+		T *search(std::function<bool(const_reference e)> predFunc) const noexcept;
 
 		ptrdiff_t index_of_element(const T *c) const noexcept;
 
@@ -163,6 +152,17 @@ namespace beautifulcode
 	template <typename C>
 	struct Slice<C, true> : Slice<C, false>
 	{
+		static_assert(detail::IsSomeChar<C>::value, "Template argument C is not a character type!");
+
+		// TODO: why aren't these inherited?
+		using value_type = typename Slice<C, false>::value_type;
+		using reference = typename Slice<C, false>::reference;
+		using const_reference = typename Slice<C, false>::const_reference;
+		using size_type = typename Slice<C, false>::size_type;
+		using difference_type = typename Slice<C, false>::difference_type;
+		using iterator = typename Slice<C, false>::iterator;
+		using const_iterator = typename Slice<C, false>::const_iterator;
+
 		constexpr Slice() noexcept;
 		constexpr Slice(C* ptr, size_t length) noexcept;
 		template <typename U, bool S> constexpr Slice(Slice<U, S> slice) noexcept;
@@ -170,8 +170,8 @@ namespace beautifulcode
 //		template <size_t N> constexpr Slice(C(&str_literal)[N]) noexcept;
 
 #if !defined(NO_STL)
-		template <class _Ty, class _Alloc> Slice(std::vector<_Ty, _Alloc> &vec) noexcept;
-		template <class _Elem, class _Traits, class _Alloc> Slice(std::basic_string<_Elem, _Traits, _Alloc> &str) noexcept;
+		template <class _Ty, class _Alloc> Slice(const std::vector<_Ty, _Alloc> &vec) noexcept;
+		template <class _Elem, class _Traits, class _Alloc> Slice(const std::basic_string<_Elem, _Traits, _Alloc> &str) noexcept;
 #endif
 
 		size_t num_chars() const noexcept;
@@ -230,12 +230,19 @@ namespace beautifulcode
 	template <typename T, bool S>
 	constexpr bool operator!=(nullptr_t, Slice<T, S> slice) noexcept { return slice == nullptr; }
 
-	// Cast from a Slice<T> to a Slice<U> where T and U are compatible types.	Its typical use is for casting from a Slice<void>.
-	template <typename Dst, typename Src>
-	constexpr Dst slice_cast(Src src) noexcept;
+	// cast from a Slice<T> to a Slice<U> where T and U are compatible types.
+	// It's typical use it for casting from a Slice<void>.
+	template <typename Dest, typename Src>
+	constexpr Dest slice_static_cast(Src src) noexcept;
+
+	template <typename Dest, typename Src>
+	constexpr Dest slice_reinterpret_cast(Src src) noexcept;
+
+	template <typename Dest, typename Src>
+	constexpr Dest slice_const_cast(Src src) noexcept;
 
 
-	//
+	// -------------------------------------------------------------------------------------------------
 	// Implementation follows:
 	//
 
@@ -262,18 +269,18 @@ namespace beautifulcode
 		: length(N), ptr(arr) {}
 
 	template <typename T, bool S>
-	inline Slice<T, S>::Slice(std::initializer_list<ElementType> list) noexcept
+	inline Slice<T, S>::Slice(std::initializer_list<value_type> list) noexcept
 		: length(list.size()), ptr(list.begin()) {}
 
 #if !defined(NO_STL)
 	template <typename T, bool S>
 	template <class _Ty, class _Alloc>
-	inline Slice<T, S>::Slice(std::vector<_Ty, _Alloc> &vec) noexcept
+	inline Slice<T, S>::Slice(const std::vector<_Ty, _Alloc> &vec) noexcept
 		: length(vec.length()), ptr(vec.data()) {}
 
 	template <typename T, bool S>
 	template <class _Elem, class _Traits, class _Alloc>
-	inline Slice<T, S>::Slice(std::basic_string<_Elem, _Traits, _Alloc> &str) noexcept
+	inline Slice<T, S>::Slice(const std::basic_string<_Elem, _Traits, _Alloc> &str) noexcept
 		: length(str.length()), ptr(str.data()) {}
 #endif
 
@@ -287,25 +294,25 @@ namespace beautifulcode
 	}
 
 	template <typename T, bool S>
-	constexpr typename Slice<T, S>::ElementType& Slice<T, S>::at(size_t i) const
+	constexpr typename Slice<T, S>::reference Slice<T, S>::at(size_t i) const
 	{
 		if (i >= length)
 			throw std::out_of_range("Index out of bounds");
-		return ((ElementType*)ptr)[i];
+		return ((value_type*)ptr)[i];
 	}
 
 	template <typename T, bool S>
-	constexpr typename Slice<T, S>::ElementType& Slice<T, S>::operator[](size_t i) const noexcept
+	constexpr typename Slice<T, S>::reference Slice<T, S>::operator[](size_t i) const noexcept
 	{
-		assert(i < length);
-		return ((ElementType*)ptr)[i];
+		SLICE_ASSERT(i < length);
+		return ((value_type*)ptr)[i];
 	}
 
 	template <typename T, bool S>
 	constexpr Slice<T> Slice<T, S>::slice(size_t first, size_t last) const noexcept
 	{
-		assert(first <= last && last <= length);
-		return{ (ElementType*)ptr + first, last - first };
+		SLICE_ASSERT(first <= last && last <= length);
+		return{ (value_type*)ptr + first, last - first };
 	}
 
 	template <typename T, bool S>
@@ -314,7 +321,7 @@ namespace beautifulcode
 		if (length != slice.length)
 			return false;
 		for (size_t i = 0; i < length; ++i)
-			if (((ElementType*)ptr)[i] != ((ElementType*)slice.ptr)[i])
+			if (((value_type*)ptr)[i] != ((value_type*)slice.ptr)[i])
 				return false;
 		return true;
 	}
@@ -325,8 +332,8 @@ namespace beautifulcode
 		size_t len = length < slice.length ? length : slice.length;
 		for (size_t i = 0; i < len; ++i)
 		{
-			if (((ElementType*)ptr)[i] != ((ElementType*)slice.ptr)[i])
-				return ((ElementType*)ptr)[i] < ((ElementType*)slice.ptr)[i] ? -1 : 1;
+			if (((value_type*)ptr)[i] != ((value_type*)slice.ptr)[i])
+				return ((value_type*)ptr)[i] < ((value_type*)slice.ptr)[i] ? -1 : 1;
 		}
 		return length - slice.length;
 	}
@@ -347,38 +354,38 @@ namespace beautifulcode
 	}
 
 	template <typename T, bool S>
-	inline typename Slice<T, S>::ElementType& Slice<T, S>::pop_front() noexcept
+	inline typename Slice<T, S>::reference Slice<T, S>::pop_front() noexcept
 	{
-		assert(length > 0);
+		SLICE_ASSERT(length > 0);
 		++ptr;
 		--length;
-		return ((ElementType*)ptr)[-1];
+		return ((value_type*)ptr)[-1];
 	}
 	template <typename T, bool S>
 	inline Slice<typename detail::SliceElementType<T>::Ty> Slice<T, S>::pop_front(size_t n) noexcept
 	{
-		assert(length >= n);
+		SLICE_ASSERT(length >= n);
 		ptr += n;
 		length -= n;
 		return{ ptr - n, n };
 	}
 	template <typename T, bool S>
-	inline typename Slice<T, S>::ElementType& Slice<T, S>::pop_back() noexcept
+	inline typename Slice<T, S>::reference Slice<T, S>::pop_back() noexcept
 	{
-		assert(length > 0);
+		SLICE_ASSERT(length > 0);
 		--length;
-		return ((ElementType*)ptr)[length];
+		return ((value_type*)ptr)[length];
 	}
 	template <typename T, bool S>
 	inline Slice<typename detail::SliceElementType<T>::Ty> Slice<T, S>::pop_back(size_t n) noexcept
 	{
-		assert(length >= n);
+		SLICE_ASSERT(length >= n);
 		length -= n;
 		return{ ptr + length, n };
 	}
 
 	template <typename T, bool S>
-	inline bool Slice<T, S>::contains(const typename Slice<T, S>::ElementType &c, size_t *index) const noexcept
+	inline bool Slice<T, S>::contains(const typename Slice<T, S>::value_type &c, size_t *index) const noexcept
 	{
 		size_t i = find_first(c);
 		if (index)
@@ -403,18 +410,18 @@ namespace beautifulcode
 		template <typename U, bool S> struct FindImpl<const Slice<U, S>>	{ static inline bool eq(const Slice<U, S> &a, const Slice<U, S> &b) noexcept { return a.eq(b); } };
 	}
 	template <typename T, bool S>
-	inline size_t Slice<T, S>::find_first(const typename Slice<T, S>::ElementType &c) const noexcept
+	inline size_t Slice<T, S>::find_first(const typename Slice<T, S>::value_type &c) const noexcept
 	{
 		size_t offset = 0;
-		while (offset < length && !detail::FindImpl<typename Slice<T, S>::ElementType>::eq(ptr[offset], c))
+		while (offset < length && !detail::FindImpl<typename Slice<T, S>::value_type>::eq(ptr[offset], c))
 			++offset;
 		return offset;
 	}
 	template <typename T, bool S>
-	inline size_t Slice<T, S>::find_last(const typename Slice<T, S>::ElementType &c) const noexcept
+	inline size_t Slice<T, S>::find_last(const typename Slice<T, S>::value_type &c) const noexcept
 	{
 		ptrdiff_t last = length - 1;
-		while (last >= 0 && !detail::FindImpl<typename Slice<T, S>::ElementType>::eq(ptr[last], c))
+		while (last >= 0 && !detail::FindImpl<typename Slice<T, S>::value_type>::eq(ptr[last], c))
 			--last;
 		return last < 0 ? length : last;
 	}
@@ -429,7 +436,7 @@ namespace beautifulcode
 			size_t j = 0;
 			for (; j < s.length; ++j)
 			{
-				if (!detail::FindImpl<typename Slice<T, S>::ElementType>::eq(ptr[i + j], s.ptr[j]))
+				if (!detail::FindImpl<typename Slice<T, S>::value_type>::eq(ptr[i + j], s.ptr[j]))
 					break;
 			}
 			if (j == s.length)
@@ -447,7 +454,7 @@ namespace beautifulcode
 			size_t j = 0;
 			for (; j < s.length; ++j)
 			{
-				if (!detail::FindImpl<typename Slice<T, S>::ElementType>::eq(ptr[i + j], s.ptr[j]))
+				if (!detail::FindImpl<typename Slice<T, S>::value_type>::eq(ptr[i + j], s.ptr[j]))
 					break;
 			}
 			if (j == s.length)
@@ -457,7 +464,7 @@ namespace beautifulcode
 	}
 
 	template <typename T, bool S>
-	inline T* Slice<T, S>::search(std::function<bool(const ElementType &e)> pred) const noexcept
+	inline T* Slice<T, S>::search(std::function<bool(const_reference e)> pred) const noexcept
 	{
 		for (size_t i = 0; i < length; ++i)
 		{
@@ -476,7 +483,7 @@ namespace beautifulcode
 	}
 
 	template <typename T, bool S>
-	inline Slice<T> Slice<T, S>::get_left_at_first(const typename Slice<T, S>::ElementType &c, bool inclusive) const noexcept
+	inline Slice<T> Slice<T, S>::get_left_at_first(const typename Slice<T, S>::value_type &c, bool inclusive) const noexcept
 	{
 		size_t offset = find_first(c);
 		if (offset != this->length)
@@ -484,7 +491,7 @@ namespace beautifulcode
 		return{ this->ptr, offset };
 	}
 	template <typename T, bool S>
-	inline Slice<T> Slice<T, S>::get_left_at_last(const typename Slice<T, S>::ElementType &c, bool inclusive) const noexcept
+	inline Slice<T> Slice<T, S>::get_left_at_last(const typename Slice<T, S>::value_type &c, bool inclusive) const noexcept
 	{
 		size_t offset = find_last(c);
 		if (offset != this->length)
@@ -492,7 +499,7 @@ namespace beautifulcode
 		return{ this->ptr, offset };
 	}
 	template <typename T, bool S>
-	inline Slice<T> Slice<T, S>::get_right_at_first(const typename Slice<T, S>::ElementType &c, bool inclusive) const noexcept
+	inline Slice<T> Slice<T, S>::get_right_at_first(const typename Slice<T, S>::value_type &c, bool inclusive) const noexcept
 	{
 		size_t offset = find_first(c);
 		if (offset != this->length)
@@ -500,7 +507,7 @@ namespace beautifulcode
 		return{ this->ptr + offset, length - offset };
 	}
 	template <typename T, bool S>
-	inline Slice<T> Slice<T, S>::get_right_at_last(const typename Slice<T, S>::ElementType &c, bool inclusive) const noexcept
+	inline Slice<T> Slice<T, S>::get_right_at_last(const typename Slice<T, S>::value_type &c, bool inclusive) const noexcept
 	{
 		size_t offset = find_last(c);
 		if (offset != this->length)
@@ -545,7 +552,7 @@ namespace beautifulcode
 	template <typename U>
 	inline size_t Slice<T, S>::copy_to(Slice<U> dest) const noexcept
 	{
-		assert(dest.length >= length);
+		SLICE_ASSERT(dest.length >= length);
 		for (size_t i = 0; i < length; ++i)
 			dest.ptr[i] = ptr[i];
 		return length;
@@ -639,16 +646,122 @@ namespace beautifulcode
 	namespace detail
 	{
 		// TODO: these are pretty lame! use lookup table? (requires .cpp file)
-		constexpr bool is_whitespace(char c) noexcept { return c == ' ' || c == '\t' || c == '\n' || c == '\r'; }
-		constexpr bool is_hex(char c) noexcept { return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'); }
-		constexpr bool is_number(char c) noexcept { return c >= '0' && c <= '9'; }
+		constexpr bool is_whitespace(char32_t c) noexcept { return c == ' ' || c == '\t' || c == '\n' || c == '\r'; }
+		constexpr bool is_hex(char32_t c) noexcept { return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'); }
+		constexpr bool is_number(char32_t c) noexcept { return c >= '0' && c <= '9'; }
 
-		constexpr char to_lower(char c) noexcept { return c >= 'A' && c <= 'Z' ? c | 0x20 : c; }
-		constexpr char to_upper(char c) noexcept { return c >= 'a' && c <= 'z' ? c & ~0x20 : c; }
+		constexpr char to_lower(char32_t c) noexcept { return c >= 'A' && c <= 'Z' ? c | 0x20 : c; }
+		constexpr char to_upper(char32_t c) noexcept { return c >= 'a' && c <= 'z' ? c & ~0x20 : c; }
 
-		inline size_t utf_decode(const unsigned char *utf8, char32_t *c) noexcept
+		template <typename C>
+		inline size_t strlen(const C *c_str) noexcept
 		{
-			if (utf8[0] < 128)
+			size_t len = 0;
+			while (c_str[len])
+				++len;
+			return len;
+		}
+		template <> inline size_t strlen<char>(const char *c_str) noexcept { return ::strlen(c_str); }
+		template <> inline size_t strlen<unsigned char>(const unsigned char *c_str) noexcept { return ::strlen((char*)c_str); }
+		template <> inline size_t strlen<wchar_t>(const wchar_t *c_str) noexcept { return wcslen(c_str); }
+
+		template<typename C>
+		constexpr size_t utf_seq_length(char32_t c) noexcept;
+		template<>
+		constexpr size_t utf_seq_length<char>(char32_t c) noexcept
+		{
+			return c < 0x80 ? 1 : (c < 0x800 ? 2 : (c < 0x10000 ? 3 : 4));
+		}
+		template<>
+		constexpr size_t utf_seq_length<unsigned char>(char32_t c) noexcept
+		{
+			return c < 0x80 ? 1 : (c < 0x800 ? 2 : (c < 0x10000 ? 3 : 4));
+		}
+		template<>
+		constexpr size_t utf_seq_length<char16_t>(char32_t c) noexcept
+		{
+			return c < 0x10000 ? 1 : 2;
+		}
+		template<>
+		constexpr size_t utf_seq_length<char32_t>(char32_t) noexcept
+		{
+			return 1;
+		}
+		template<>
+		constexpr size_t utf_seq_length<wchar_t>(char32_t c) noexcept
+		{
+			static_assert(sizeof(wchar_t) == sizeof(char16_t) || sizeof(wchar_t) == sizeof(char32_t), "Unexpected wchar_t size!");
+			return sizeof(wchar_t) == sizeof(char16_t) ? (c < 0x10000 ? 1 : 2) : 1;
+		}
+
+		inline size_t utf_encode(char32_t c, char *utf8) noexcept
+		{
+			if (c < 0x80)
+			{
+				utf8[0] = (char)c;
+				return 1;
+			}
+			else if (c < 0x800)
+			{
+				utf8[1] = (c & 0x3f) | 0x80; c >>= 6;
+				utf8[0] = (c & 0x1f) | 0xc0;
+				return 2;
+			}
+			else if (c < 0x10000)
+			{
+				utf8[2] = (c & 0x3f) | 0x80; c >>= 6;
+				utf8[1] = (c & 0x3f) | 0x80; c >>= 6;
+				utf8[0] = (c & 0x0f) | 0xe0;
+				return 3;
+			}
+			else // NOTE: unicode was restricted to 20 bits, so we will stop here. the upper bits of a char32_t are truncated.
+			{
+				utf8[3] = (c & 0x3f) | 0x80; c >>= 6;
+				utf8[2] = (c & 0x3f) | 0x80; c >>= 6;
+				utf8[1] = (c & 0x3f) | 0x80; c >>= 6;
+				utf8[0] = (c & 0x07) | 0xf0;
+				return 4;
+			}
+		}
+		inline size_t utf_encode(char32_t c, unsigned char *utf8) noexcept
+		{
+			return utf_encode(c, (char*)utf8);
+		}
+		inline size_t utf_encode(char32_t c, char16_t *utf16) noexcept
+		{
+			if (c < 0x10000)
+			{
+				utf16[0] = (char16_t)c;
+				return 1;
+			}
+			else
+			{
+				c -= 0x10000;
+				utf16[0] = (char16_t)(0xD800 | (c >> 10));
+				utf16[1] = (char16_t)(0xDC00 | (c & 0x3FF));
+				return 2;
+			}
+		}
+		inline size_t utf_encode(char32_t c, char32_t *utf32) noexcept
+		{
+			*utf32 = c;
+			return 1;
+		}
+		inline size_t utf_encode(char32_t c, wchar_t *wc) noexcept
+		{
+			static_assert(sizeof(wchar_t) == sizeof(char16_t) || sizeof(wchar_t) == sizeof(char32_t), "Unexpected wchar_t size!");
+			if (sizeof(wchar_t) == sizeof(char16_t))
+				return utf_encode(c, (char16_t*)wc);
+			else
+			{
+				*wc = (wchar_t)c;
+				return 1;
+			}
+		}
+
+		inline size_t utf_decode(const char *utf8, char32_t *c) noexcept
+		{
+			if ((unsigned char)utf8[0] < 128)
 			{
 				*c = utf8[0];
 				return 1;
@@ -669,6 +782,10 @@ namespace beautifulcode
 				return 4;
 			}
 		}
+		inline size_t utf_decode(const unsigned char *utf8, char32_t *c) noexcept
+		{
+			return utf_decode((const char*)utf8, c);
+		}
 		inline size_t utf_decode(const char16_t *utf16, char32_t *c) noexcept
 		{
 			if (utf16[0] >= 0xD800 && (utf16[0] & 0xFC00) == 0xD800)
@@ -687,6 +804,114 @@ namespace beautifulcode
 			*c = *utf32;
 			return 1;
 		}
+		inline size_t utf_decode(const wchar_t *wc, char32_t *c) noexcept
+		{
+			static_assert(sizeof(wchar_t) == sizeof(char16_t) || sizeof(wchar_t) == sizeof(char32_t), "Unexpected wchar_t size!");
+			if (sizeof(wchar_t) == sizeof(char16_t))
+				return utf_decode((char16_t*)wc, c);
+			else
+			{
+				*c = (char32_t)*wc;
+				return 1;
+			}
+		}
+
+		template <typename C, bool S, typename D, bool T>
+		size_t url_encode(Slice<C, S> buffer, Slice<D, T> text)
+		{
+			const D *s = text.ptr;
+			const D *end = text.ptr + text.length;
+
+			size_t len = 0;
+
+			unsigned char temp[4];
+			size_t tlen = 1;
+
+			while (s < end)
+			{
+				if (sizeof(D) > 1)
+				{
+					char32_t t;
+					s += utf_decode(s, &t);
+					tlen = utf_encode(t, temp);
+				}
+				else
+					temp[0] = (unsigned char)*s++;
+
+				for (size_t i = 0; i < tlen; ++i)
+				{
+					unsigned char c = temp[i];
+					if (c == ' ')
+					{
+						buffer.ptr[len++] = '+';
+					}
+					else if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')
+						|| c == '_' || c == '-' || c == '.' || c == '~'
+//						|| c == '*' || c == '!' || c == '(' || c == ')' // these sometimes seem to be valid?
+						)
+					{
+						buffer.ptr[len++] = c;
+					}
+					else
+					{
+						int h = (unsigned char)c >> 4, l = c & 0xF;
+						buffer.ptr[len++] = '%';
+						buffer.ptr[len++] = h < 10 ? '0' + h : 'A' + h - 10;
+						buffer.ptr[len++] = l < 10 ? '0' + l : 'A' + l - 10;
+					}
+				}
+			}
+
+			return len;
+		}
+
+		template <typename C, bool S, typename D, bool T>
+		size_t url_decode(Slice<C, S> buffer, Slice<D, T> url)
+		{
+			const D *s = url.ptr;
+			const D *end = url.ptr + url.length;
+
+			size_t len = 0;
+			ptrdiff_t utf8Expect = 0;
+
+			unsigned char utf[4];
+			size_t tlen = 0;
+
+			while (s < end)
+			{
+				char32_t c;
+				s += utf_decode(s, &c);
+
+				if (c == '+')
+					c = ' ';
+
+				while (c == '%' && s < end - 1 && is_hex(s[0]) && is_hex(s[1]))
+				{
+					utf[tlen++] = (unsigned char)Slice<const D>(s, 2).parse_int(false, 16);
+					s += 2;
+
+					if (utf[0] < 128)
+					{
+						c = utf[0];
+						tlen = 0;
+						break;
+					}
+					else if (((utf[0] & 0xE0) == 0xC0 && tlen == 2) ||
+						((utf[0] & 0xF0) == 0xE0 && tlen == 3) ||
+						tlen == 4)
+					{
+						utf_decode(utf, &c);
+						tlen = 0;
+						break;
+					}
+
+					c = *s++;
+				}
+
+				len += utf_encode(c, buffer.ptr + len);
+			}
+			return len;
+		}
 	}
 
 	template <typename C>
@@ -704,7 +929,7 @@ namespace beautifulcode
 
 	template <typename C>
 	Slice<C, true>::Slice(C *c_str) noexcept
-		: Slice<C, false>(c_str, c_str ? strlen(c_str) : 0) {}
+		: Slice<C, false>(c_str, c_str ? detail::strlen(c_str) : 0) {}
 
 //	template <typename C>
 //	template <size_t N>
@@ -714,12 +939,12 @@ namespace beautifulcode
 #if !defined(NO_STL)
 	template <typename C>
 	template <class _Ty, class _Alloc>
-	inline Slice<C, true>::Slice(std::vector<_Ty, _Alloc> &vec) noexcept
-		: Slice<C, false>(vec.data(), vec.length()) {}
+	inline Slice<C, true>::Slice(const std::vector<_Ty, _Alloc> &vec) noexcept
+		: Slice<C, false>(vec.data(), vec.size()) {}
 
 	template <typename C>
 	template <class _Elem, class _Traits, class _Alloc>
-	inline Slice<C, true>::Slice(std::basic_string<_Elem, _Traits, _Alloc> &str) noexcept
+	inline Slice<C, true>::Slice(const std::basic_string<_Elem, _Traits, _Alloc> &str) noexcept
 		: Slice<C, false>(str.data(), str.length()) {}
 #endif
 
@@ -743,17 +968,17 @@ namespace beautifulcode
 	template<typename C>
 	inline char32_t Slice<C, true>::front_char() const noexcept
 	{
-		assert(this->length > 0);
+		SLICE_ASSERT(this->length > 0);
 		char32_t r;
 		detail::utf_decode(this->ptr, &r);
 		return r;
 	}
 	template<>
-	inline char32_t Slice<const unsigned char, true>::back_char() const noexcept
+	inline char32_t Slice<const char, true>::back_char() const noexcept
 	{
-		assert(this->length > 0);
-		const unsigned char *last = ptr + length - 1;
-		if (*last < 128)
+		SLICE_ASSERT(this->length > 0);
+		const char *last = ptr + length - 1;
+		if ((unsigned char)*last < 128)
 			return *last;
 		do --last;
 		while ((*last & 0xC) == 0x80 && last >= this->ptr);
@@ -762,15 +987,15 @@ namespace beautifulcode
 		return r;
 	}
 	template<>
-	inline char32_t Slice<unsigned char, true>::back_char() const noexcept { return ((Slice<const unsigned char, true>*)this)->back_char(); }
+	inline char32_t Slice<char, true>::back_char() const noexcept { return ((Slice<const char, true>*)this)->back_char(); }
 	template<>
-	inline char32_t Slice<const char, true>::back_char() const noexcept { return ((Slice<const unsigned char, true>*)this)->back_char(); }
+	inline char32_t Slice<const unsigned char, true>::back_char() const noexcept { return ((Slice<const char, true>*)this)->back_char(); }
 	template<>
-	inline char32_t Slice<char, true>::back_char() const noexcept { return ((Slice<const unsigned char, true>*)this)->back_char(); }
+	inline char32_t Slice<unsigned char, true>::back_char() const noexcept { return ((Slice<const char, true>*)this)->back_char(); }
 	template<>
 	inline char32_t Slice<const char16_t, true>::back_char() const noexcept
 	{
-		assert(this->length > 0);
+		SLICE_ASSERT(this->length > 0);
 		char16_t back = ptr[length - 1];
 		if (back >= 0xD800 && (back & 0xFC00) == 0xDC00 && this->length > 1)
 		{
@@ -783,14 +1008,14 @@ namespace beautifulcode
 	template<>
 	inline char32_t Slice<char16_t, true>::back_char() const noexcept { return ((Slice<const char16_t, true>*)this)->back_char(); }
 	template<>
-	inline char32_t Slice<const char32_t, true>::back_char() const noexcept { assert(this->length > 0); return ptr[length - 1]; }
+	inline char32_t Slice<const char32_t, true>::back_char() const noexcept { SLICE_ASSERT(this->length > 0); return ptr[length - 1]; }
 	template<>
-	inline char32_t Slice<char32_t, true>::back_char() const noexcept { assert(this->length > 0); return ptr[length - 1]; }
+	inline char32_t Slice<char32_t, true>::back_char() const noexcept { SLICE_ASSERT(this->length > 0); return ptr[length - 1]; }
 
 	template<typename C>
 	inline char32_t Slice<C, true>::pop_front_char() noexcept
 	{
-		assert(this->length > 0);
+		SLICE_ASSERT(this->length > 0);
 		char32_t r;
 		size_t codeUnits = detail::utf_decode(this->ptr, &r);
 		this->ptr += codeUnits;
@@ -798,10 +1023,10 @@ namespace beautifulcode
 		return r;
 	}
 	template<>
-	inline char32_t Slice<const unsigned char, true>::pop_back_char() noexcept
+	inline char32_t Slice<const char, true>::pop_back_char() noexcept
 	{
-		assert(this->length > 0);
-		if (ptr[length - 1] < 128)
+		SLICE_ASSERT(this->length > 0);
+		if ((unsigned char)ptr[length - 1] < 128)
 			return ptr[--length];
 		size_t numChars = 2;
 		while (this->length >= numChars && (ptr[length - numChars] & 0xC) == 0x80)
@@ -812,15 +1037,15 @@ namespace beautifulcode
 		return r;
 	}
 	template<>
-	inline char32_t Slice<unsigned char, true>::pop_back_char() noexcept { return ((Slice<const unsigned char, true>*)this)->pop_back_char(); }
+	inline char32_t Slice<char, true>::pop_back_char() noexcept { return ((Slice<const char, true>*)this)->pop_back_char(); }
 	template<>
-	inline char32_t Slice<const char, true>::pop_back_char() noexcept { return ((Slice<const unsigned char, true>*)this)->pop_back_char(); }
+	inline char32_t Slice<const unsigned char, true>::pop_back_char() noexcept { return ((Slice<const char, true>*)this)->pop_back_char(); }
 	template<>
-	inline char32_t Slice<char, true>::pop_back_char() noexcept { return ((Slice<const unsigned char, true>*)this)->pop_back_char(); }
+	inline char32_t Slice<unsigned char, true>::pop_back_char() noexcept { return ((Slice<const char, true>*)this)->pop_back_char(); }
 	template<>
 	inline char32_t Slice<const char16_t, true>::pop_back_char() noexcept
 	{
-		assert(this->length > 0);
+		SLICE_ASSERT(this->length > 0);
 		char16_t back = ptr[--length];
 		if (back >= 0xD800 && (back & 0xFC00) == 0xDC00 && this->length > 1)
 		{
@@ -833,9 +1058,9 @@ namespace beautifulcode
 	template<>
 	inline char32_t Slice<char16_t, true>::pop_back_char() noexcept { return ((Slice<const char16_t, true>*)this)->pop_back_char(); }
 	template<>
-	inline char32_t Slice<const char32_t, true>::pop_back_char() noexcept { assert(this->length > 0); return ptr[--length]; }
+	inline char32_t Slice<const char32_t, true>::pop_back_char() noexcept { SLICE_ASSERT(this->length > 0); return ptr[--length]; }
 	template<>
-	inline char32_t Slice<char32_t, true>::pop_back_char() noexcept { assert(this->length > 0); return ptr[--length]; }
+	inline char32_t Slice<char32_t, true>::pop_back_char() noexcept { SLICE_ASSERT(this->length > 0); return ptr[--length]; }
 
 	template<typename C>
 	inline bool Slice<C, true>::eq_ic(Slice<const C> str) const noexcept
@@ -1100,7 +1325,7 @@ namespace beautifulcode
 				return number;
 			}
 			default:
-				assert(false);
+				SLICE_ASSERT(false);
 		}
 		return 0;
 	}
@@ -1191,11 +1416,27 @@ namespace beautifulcode
 		template <typename T, bool S> struct is_slice<const Slice<T, S>>	{ enum { value = 1 }; };
 	}
 
-	template <typename Dst, typename Src>
-	constexpr Dst slice_cast(Src src) noexcept
+	template <typename Dest, typename Src>
+	constexpr Dest slice_static_cast(Src src) noexcept
 	{
-		static_assert(detail::is_slice<Src>::value && detail::is_slice<Dst>::value, "Dst and/or Src is not a Slice");
-		assert(src.length * sizeof(typename Src::ElementType) % sizeof(typename Dst::ElementType) == 0);
-		return Dst((typename Dst::ElementType*)src.ptr, src.length * sizeof(typename Src::ElementType) / sizeof(typename Dst::ElementType));
+		static_assert(detail::is_slice<Src>::value && detail::is_slice<Dest>::value, "Dest and/or Src is not a Slice");
+		SLICE_ASSERT(src.length * sizeof(typename Src::value_type) % sizeof(typename Dest::value_type) == 0);
+		return Dest(static_cast<typename Dest::value_type*>(src.ptr), src.length * sizeof(typename Src::value_type) / sizeof(typename Dest::value_type));
+	}
+
+	template <typename Dest, typename Src>
+	constexpr Dest slice_reinterpret_cast(Src src) noexcept
+	{
+		static_assert(detail::is_slice<Src>::value && detail::is_slice<Dest>::value, "Dest and/or Src is not a Slice");
+		SLICE_ASSERT(src.length * sizeof(typename Src::value_type) % sizeof(typename Dest::value_type) == 0);
+		return Dest(reinterpret_cast<typename Dest::value_type*>(src.ptr), src.length * sizeof(typename Src::value_type) / sizeof(typename Dest::value_type));
+	}
+
+	template <typename Dest, typename Src>
+	constexpr Dest slice_const_cast(Src src) noexcept
+	{
+		static_assert(detail::is_slice<Src>::value && detail::is_slice<Dest>::value, "Dest and/or Src is not a Slice");
+		SLICE_ASSERT(src.length * sizeof(typename Src::value_type) % sizeof(typename Dest::value_type) == 0);
+		return Dest(const_cast<typename Dest::value_type*>(src.ptr), src.length * sizeof(typename Src::value_type) / sizeof(typename Dest::value_type));
 	}
 }
