@@ -7,7 +7,7 @@ There are 3 types provided:
 
 Array container that owns its elements. Similar to `std::vector`, but much leaner, and with more useful syntax and operations.
 
-`Array` may optionally take a second `size_t` argument; `Array<T, N>`, which reserves `N` elements inside the `Array` structure. These local elements will be used for short arrays, avoiding allocations. This is particularly useful when storing working data on the stack, which may reserve some stack space for short arrays, but overflow (allocate) to the heap of the workload becomes large.
+`Array` may optionally take a second `size_t` argument; `Array<T, N>`, which reserves `N` elements inside the `Array` structure. These local elements will be used for short arrays, avoiding allocations. This is particularly useful when storing working data on the stack, which may reserve some stack space for short arrays, but overflow (allocate) to the heap if the workload becomes large.
 
 ### `SharedArray<T>`
 
@@ -17,13 +17,13 @@ Ref-counted version of `Array<T>` for shared data, making copies very efficient.
 
 `SharedArray` is 'structurally immutable', that is, the length of the array may not change after construction. `push`/`pop` methods are disabled for `SharedArray`'s.
 
-It is a common pattern to use `Array` as a working unit to build some data, and then transfer it to a `SharedArray` when it is to be distribution throughout an application.
+It is a common pattern to use `Array` as a working unit to build some data, and then transfer to a `SharedArray` when it is to be distributed throughout an application.
 
 ### `Slice<T>`
 
 Slice is an un-owned array, similar to `std::array_view` as introduced to C++17.
 
-Slices are a reference to someone elses memory, which makes them efficient for passing as parameters to functions (like passing pointers/references), but they should generally not be retained, as the data is un-owned, and might be lost at some later time.
+Slices are a reference to someone else's memory, which makes them efficient for passing as parameters to functions (like passing pointers/references), but they should generally not be retained, as the data is un-owned, and might be lost at some later time.
 
 ## String specialisation
 
@@ -31,7 +31,7 @@ All types are specialised for character element types; `char`, `wchar_t`, `char1
 
 Functionality becomes similar to `std::string`/`std::string_view`, except with many extra useful methods.
 
-Strings are not required to be zero-terminated, which makes working on sub-strings, or tokenised strings extremely efficient. This is a major advantage in terms of speed and convenience compared to standard C or STL string apis. No additional allocation or modification of strings for zero-termination is required to perform any string manipulation. Parsing complex string data is typically possible with a single allocation and read-only access.
+Strings are not required to be zero-terminated, which makes working on sub-strings, or tokenised strings extremely efficient. This is a major advantage in terms of speed and convenience compared to standard C or STL string APIs. No additional allocation or modification of strings for zero-termination is required to perform any string manipulation. Parsing complex string data is typically possible with a single allocation and read-only access.
 
 Strings have Unicode awareness, and support Unicode format transcoding when assigning from one Unicode string type to another. Comprehensive encode and decode functionality also exists.
 
@@ -64,7 +64,7 @@ Shared strings (not mutable):
 
 ## STL interoperability
 
-These types attempt to conform with standard STL api naming conventions and patterns where it doesn't conflict with the design goals.
+These types attempt to conform with standard STL API naming conventions and patterns where it doesn't conflict with the design goals.
 
 All types can efficiently construct from `std::vector`, `std::string`, etc, types.
 Some users may just like to use `Slice<T>` in an application that uses `std::string` for storage to gain access to efficient string manipulation.
@@ -123,24 +123,27 @@ assert (tokens[2].eq("string"));
 
 Arrays work like `std::vector`, except may store some local data for short arrays:
 ```C++
-#include <slice.h>
+#include <array.h>
 
-Array<int> arr = { 1, 2, 3 };                     // arr == [ 1, 2, 3 ]
-arr.push_back(4);                                 // arr == [ 1, 2, 3, 4 ]
+Array<int> arr = { 1, 2, 3 };      // arr == [ 1, 2, 3 ]
+arr.push_back(4);                  // arr == [ 1, 2, 3, 4 ]
+arr.pop_back();                    // arr == [ 1, 2, 3 ]
 
-Array<int, 4> sa = arr;   // sa = [ 1, 2, 3 ]       <- elemtns are on the stack
-sa.push_back(4);          // sa = [ 1, 2, 3, 4 ]    <- elemtns are still on the stack
-sa.push_back(5);          // sa = [ 1, 2, 3, 4, 5 ] <- elemtns have overflowed to an allocation
+Array<int, 4> sa = arr;            // sa = [ 1, 2, 3 ]       <- elements are on the stack
+sa.push_back(4);                   // sa = [ 1, 2, 3, 4 ]    <- elements are still on the stack
+sa.push_back(5);                   // sa = [ 1, 2, 3, 4, 5 ] <- elements have overflowed to an allocation
 
 // build arrays by concatination of other arrays, or single elements
-Array<int> a2(Concat, arr, 10, arr.slice(0, 2));  // a2 = [ 1, 2, 3, 4, 10, 1, 2 ]
+Array<int> a2(Concat, arr, 10, arr.slice(0, 2));  // a2 = [ 1, 2, 3, 10, 1, 2 ]
 
-// conveniently build strings, unicode format automatically transcodes to target
+// conveniently build strings, unicode formats automatically transcode to target
 MutableString<> str(Concat, "Hello ", U"cruel ", L"world", '!');
 ```
 
-And SharedString's are useful for sharing and keeping for long times:
+And SharedArray's are useful for sharing and keeping for long times:
 ```C++
+#include <sharedarray.h>
+
 SharedArray<int> sa = { 1, 2, 3 }; // allocation with ref-count == 1
 SharedArray<int> sa2 = sa;         // ref-count == 2
 sa = nullptr;                      // sa2 ref-count == 1
