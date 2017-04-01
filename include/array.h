@@ -754,7 +754,7 @@ namespace beautifulcode
 			if (sizeof(U) == sizeof(T))
 			{
 				while (*s)
-					*buf++ = *s++;
+					*buf++ = (T)*s++; // hack: cast because we no 'if constexpr' :(
 			}
 			else
 			{

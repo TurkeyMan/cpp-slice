@@ -652,8 +652,8 @@ namespace beautifulcode
 		constexpr bool is_hex(char32_t c) noexcept { return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'); }
 		constexpr bool is_number(char32_t c) noexcept { return c >= '0' && c <= '9'; }
 
-		constexpr char to_lower(char32_t c) noexcept { return c >= 'A' && c <= 'Z' ? c | 0x20 : c; }
-		constexpr char to_upper(char32_t c) noexcept { return c >= 'a' && c <= 'z' ? c & ~0x20 : c; }
+		constexpr char32_t to_lower(char32_t c) noexcept { return c >= 'A' && c <= 'Z' ? c | 0x20 : c; }
+		constexpr char32_t to_upper(char32_t c) noexcept { return c >= 'a' && c <= 'z' ? c & ~0x20 : c; }
 
 		template <typename C>
 		inline size_t strlen(const C *c_str) noexcept
@@ -1291,7 +1291,7 @@ namespace beautifulcode
 			case 9:
 			{
 				int64_t number = 0;
-				while (s < end && *s >= '0' && *s <= '0' + (base - 1))
+				while (s < end && *s >= '0' && *s <= '0' + ((C)base - 1))
 				{
 					number = number*base + (*s - '0');
 					++s;
