@@ -93,6 +93,8 @@ namespace beautifulcode
 	private:
 		template <typename U, size_t N, bool S>
 		friend struct Array;
+		template <typename U, bool S>
+		friend struct SharedArray;
 
 		template <size_t Len, bool = true>
 		struct LocalBuffer
@@ -161,6 +163,8 @@ namespace beautifulcode
 		Array<C, Count, true>& url_decode(Slice<U, S> url);
 
 	private:
+		template <typename U, bool S>
+		friend struct SharedArray;
 		template <typename U> void do_sprintf(const U *format, va_list args) noexcept;
 	};
 
@@ -170,6 +174,11 @@ namespace beautifulcode
 	using MutableWString = Array<char16_t, Count>;
 	template <size_t Count = 0>
 	using MutableDString = Array<char32_t, Count>;
+
+	using MutableString64 = MutableString<64 - sizeof(MutableString<0>)>;
+	using MutableString128 = MutableString<128 - sizeof(MutableString<0>)>;
+	using MutableString256 = MutableString<256 - sizeof(MutableString<0>)>;
+
 
 	// -------------------------------------------------------------------------------------------------
 	// Implementation follows:
@@ -633,6 +642,23 @@ namespace beautifulcode
 				return count;
 			}
 		}
+		template <typename T, typename C>
+		inline size_t num_code_units(const C *c_str) noexcept
+		{
+			if (sizeof(C) == sizeof(T))
+				return strlen(c_str);
+			else
+			{
+				size_t count = 0;
+				while (*c_str)
+				{
+					char32_t c;
+					c_str += detail::utf_decode(c_str, &c);
+					count += detail::utf_seq_length<T>(c);
+				}
+				return count;
+			}
+		}
 
 		template <typename T, typename C>
 		inline size_t transcode_string(T *buffer, const C *str, size_t len) noexcept
@@ -647,6 +673,27 @@ namespace beautifulcode
 				const C *end = str + len;
 				T *buf = buffer;
 				while (str < end)
+				{
+					char32_t c;
+					str += detail::utf_decode(str, &c);
+					buf += detail::utf_encode(c, buf);
+				}
+				return buf - buffer;
+			}
+		}
+
+		template <typename T, typename C>
+		inline size_t transcode_string(T *buffer, const C *str) noexcept
+		{
+			if (sizeof(C) == sizeof(T))
+			{
+				strcpy(buffer, str);
+				return detail::strlen(str); // TODO: we really need to avoid 2 passes over the string!
+			}
+			else
+			{
+				T *buf = buffer;
+				while (*str)
 				{
 					char32_t c;
 					str += detail::utf_decode(str, &c);
@@ -676,19 +723,7 @@ namespace beautifulcode
 		template<typename T, typename U, typename... Args>
 		inline auto count_chars(const U *str, const Args&... args) noexcept -> decltype(typename IsSomeChar<U>::type(), size_t())
 		{
-			size_t count = 0;
-			if (sizeof(U) == sizeof(T))
-				count = strlen(str);
-			else
-			{
-				while (*str)
-				{
-					char32_t c;
-					str += detail::utf_decode(str, &c);
-					count += detail::utf_seq_length<T>(c);
-				}
-			}
-			return count_chars<T>(args...) + count;
+			return count_chars<T>(args...) + num_code_units<T>(str);
 		}
 
 		// set of functions that append strings
@@ -767,7 +802,6 @@ namespace beautifulcode
 			return vswprintf(s, count, format, args);
 #endif
 		}
-
 	}
 
 	template <typename C, size_t Count>

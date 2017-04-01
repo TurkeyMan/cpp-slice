@@ -62,7 +62,7 @@ namespace beautifulcode
 		T *ptr;
 
 		constexpr Slice() noexcept;
-		constexpr Slice(nullptr_t) noexcept;
+		inline Slice(nullptr_t) noexcept; // TODO: constexpr fails on VS2017 due to compiler bug!
 		constexpr Slice(T* ptr, size_t length) noexcept;
 		template <typename U, bool S> constexpr Slice(Slice<U, S> slice) noexcept;
 		template <typename U, size_t N> constexpr Slice(U(&arr)[N]) noexcept;
@@ -214,7 +214,9 @@ namespace beautifulcode
 		template<bool SkipEmptyTokens = true>
 		size_t tokenise(std::function<void(Slice<C> token, size_t index)> onToken, Slice<const C> delimiters = " \t\n\r") noexcept	{ return ((Slice<const C, false>*)this)->tokenise<SkipEmptyTokens>(onToken, delimiters); }
 
-		int64_t parse_int(bool detectBase = true, int base = 10) const noexcept;
+		int64_t parse_int(bool detectBase, int base = 10) const noexcept;
+		template <int base = 10>
+		int64_t parse_int() const noexcept { return parse_int(false, base); }
 		double parse_float() const noexcept;
 
 		uint32_t hash(uint32_t hash = 0x811C9DC5) const noexcept;
@@ -251,7 +253,7 @@ namespace beautifulcode
 		: length(0), ptr(nullptr) {}
 
 	template <typename T, bool S>
-	constexpr Slice<T, S>::Slice(nullptr_t) noexcept
+	inline Slice<T, S>::Slice(nullptr_t) noexcept
 		: length(0), ptr(nullptr) {}
 
 	template <typename T, bool S>
@@ -817,7 +819,7 @@ namespace beautifulcode
 		}
 
 		template <typename C, bool S, typename D, bool T>
-		size_t url_encode(Slice<C, S> buffer, Slice<D, T> text)
+		size_t url_encode(Slice<C, S> buffer, Slice<D, T> text) noexcept
 		{
 			const D *s = text.ptr;
 			const D *end = text.ptr + text.length;
@@ -866,13 +868,12 @@ namespace beautifulcode
 		}
 
 		template <typename C, bool S, typename D, bool T>
-		size_t url_decode(Slice<C, S> buffer, Slice<D, T> url)
+		size_t url_decode(Slice<C, S> buffer, Slice<D, T> url) noexcept
 		{
 			const D *s = url.ptr;
 			const D *end = url.ptr + url.length;
 
 			size_t len = 0;
-			ptrdiff_t utf8Expect = 0;
 
 			unsigned char utf[4];
 			size_t tlen = 0;
@@ -1281,21 +1282,18 @@ namespace beautifulcode
 		switch (base)
 		{
 			case 2:
-			{
-				int64_t number = 0;
-				while (s < end && (*s == '0' || *s == '1'))
-				{
-					number = (number << 1) | (*s - '0');
-					++s;
-				}
-				return number;
-			}
+			case 3:
+			case 4:
+			case 5:
+			case 6:
+			case 7:
 			case 8:
+			case 9:
 			{
 				int64_t number = 0;
-				while (s < end && *s >= '0' && *s <= '7')
+				while (s < end && *s >= '0' && *s <= '0' + (base - 1))
 				{
-					number = (number << 3) | (*s - '0');
+					number = number*base + (*s - '0');
 					++s;
 				}
 				return number;
