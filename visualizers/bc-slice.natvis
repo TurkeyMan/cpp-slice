@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+
+<Type Name="beautifulcode::Slice&lt;char,*&gt;">
+    <DisplayString>{ptr,[length]s8}</DisplayString>
+    <StringView>ptr,[length]s8</StringView>
+</Type>
+<Type Name="beautifulcode::Slice&lt;char const,*&gt;">
+    <DisplayString>{ptr,[length]s8}</DisplayString>
+    <StringView>ptr,[length]s8</StringView>
+</Type>
+<Type Name="beautifulcode::Slice&lt;unsigned char,*&gt;">
+    <DisplayString>{ptr,[length]s8}</DisplayString>
+    <StringView>ptr,[length]s8</StringView>
+</Type>
+<Type Name="beautifulcode::Slice&lt;unsigned char const,*&gt;">
+    <DisplayString>{ptr,[length]s8}</DisplayString>
+    <StringView>ptr,[length]s8</StringView>
+</Type>
+<Type Name="beautifulcode::Slice&lt;wchar_t,*&gt;">
+    <DisplayString>{ptr,[length]su}</DisplayString>
+    <StringView>ptr,[length]su</StringView>
+</Type>
+<Type Name="beautifulcode::Slice&lt;wchar_t const,*&gt;">
+    <DisplayString>{ptr,[length]su}</DisplayString>
+    <StringView>ptr,[length]su</StringView>
+</Type>
+<Type Name="beautifulcode::Slice&lt;char16_t,*&gt;">
+    <!-- TODO: check out Why doesn't 's16' work, but 's32' does? -->
+    <DisplayString>{ptr,[length]}</DisplayString>
+    <StringView>ptr,[length]</StringView>
+</Type>
+<Type Name="beautifulcode::Slice&lt;char16_t const,*&gt;">
+    <!-- TODO: check out Why doesn't 's16' work, but 's32' does? -->
+    <DisplayString>{ptr,[length]}</DisplayString>
+    <StringView>ptr,[length]</StringView>
+</Type>
+<Type Name="beautifulcode::Slice&lt;char32_t,*&gt;">
+    <DisplayString>{ptr,[length]s32}</DisplayString>
+    <StringView>ptr,[length]s32</StringView>
+</Type>
+<Type Name="beautifulcode::Slice&lt;char32_t const,*&gt;">
+    <DisplayString>{ptr,[length]s32}</DisplayString>
+    <StringView>ptr,[length]s32</StringView>
+</Type>
+<Type Name="beautifulcode::Slice&lt;*&gt;">
+    <Expand>
+        <Item Name="length">length</Item>
+        <Item Name="ptr">ptr,[length]</Item>
+        <ArrayItems>
+            <Size>length</Size>
+            <ValuePointer>ptr</ValuePointer>
+        </ArrayItems>
+    </Expand>
+</Type>
+
+<Type Name="beautifulcode::Array&lt;char,*&gt;">
+    <DisplayString>{ptr,[length]s8}</DisplayString>
+    <StringView>ptr,[length]s8</StringView>
+</Type>
+<Type Name="beautifulcode::Array&lt;char const,*&gt;">
+    <DisplayString>{ptr,[length]s8}</DisplayString>
+    <StringView>ptr,[length]s8</StringView>
+</Type>
+<Type Name="beautifulcode::Array&lt;unsigned char,*&gt;">
+    <DisplayString>{ptr,[length]s8}</DisplayString>
+    <StringView>ptr,[length]s8</StringView>
+</Type>
+<Type Name="beautifulcode::Array&lt;unsigned char const,*&gt;">
+    <DisplayString>{ptr,[length]s8}</DisplayString>
+    <StringView>ptr,[length]s8</StringView>
+</Type>
+<Type Name="beautifulcode::Array&lt;wchar_t,*&gt;">
+    <DisplayString>{ptr,[length]su}</DisplayString>
+    <StringView>ptr,[length]su</StringView>
+</Type>
+<Type Name="beautifulcode::Array&lt;wchar_t const,*&gt;">
+    <DisplayString>{ptr,[length]su}</DisplayString>
+    <StringView>ptr,[length]su</StringView>
+</Type>
+<Type Name="beautifulcode::Array&lt;char16_t,*&gt;">
+    <!-- TODO: check out Why doesn't 's16' work, but 's32' does? -->
+    <DisplayString>{ptr,[length]}</DisplayString>
+    <StringView>ptr,[length]</StringView>
+</Type>
+<Type Name="beautifulcode::Array&lt;char16_t const,*&gt;">
+    <!-- TODO: check out Why doesn't 's16' work, but 's32' does? -->
+    <DisplayString>{ptr,[length]}</DisplayString>
+    <StringView>ptr,[length]</StringView>
+</Type>
+<Type Name="beautifulcode::Array&lt;char32_t,*&gt;">
+    <DisplayString>{ptr,[length]s32}</DisplayString>
+    <StringView>ptr,[length]s32</StringView>
+</Type>
+<Type Name="beautifulcode::Array&lt;char32_t const,*&gt;">
+    <DisplayString>{ptr,[length]s32}</DisplayString>
+    <StringView>ptr,[length]s32</StringView>
+</Type>
+<Type Name="beautifulcode::Array&lt;*&gt;">
+    <Expand>
+        <Item Name="length">length</Item>
+        <Item Name="ptr">ptr,[length]</Item>
+        <ArrayItems>
+            <Size>length</Size>
+            <ValuePointer>ptr</ValuePointer>
+        </ArrayItems>
+    </Expand>
+</Type>
+
+<Type Name="beautifulcode::SharedArray&lt;char,*&gt;">
+    <DisplayString>{ptr,[length]s8}</DisplayString>
+    <StringView>ptr,[length]s8</StringView>
+</Type>
+<Type Name="beautifulcode::SharedArray&lt;char const,*&gt;">
+    <DisplayString>{ptr,[length]s8}</DisplayString>
+    <StringView>ptr,[length]s8</StringView>
+</Type>
+<Type Name="beautifulcode::SharedArray&lt;unsigned char,*&gt;">
+    <DisplayString>{ptr,[length]s8}</DisplayString>
+    <StringView>ptr,[length]s8</StringView>
+</Type>
+<Type Name="beautifulcode::SharedArray&lt;unsigned char const,*&gt;">
+    <DisplayString>{ptr,[length]s8}</DisplayString>
+    <StringView>ptr,[length]s8</StringView>
+</Type>
+<Type Name="beautifulcode::SharedArray&lt;wchar_t,*&gt;">
+    <DisplayString>{ptr,[length]su}</DisplayString>
+    <StringView>ptr,[length]su</StringView>
+</Type>
+<Type Name="beautifulcode::SharedArray&lt;wchar_t const,*&gt;">
+    <DisplayString>{ptr,[length]su}</DisplayString>
+    <StringView>ptr,[length]su</StringView>
+</Type>
+<Type Name="beautifulcode::SharedArray&lt;char16_t,*&gt;">
+    <!-- TODO: check out Why doesn't 's16' work, but 's32' does? -->
+    <DisplayString>{ptr,[length]}</DisplayString>
+    <StringView>ptr,[length]</StringView>
+</Type>
+<Type Name="beautifulcode::SharedArray&lt;char16_t const,*&gt;">
+    <!-- TODO: check out Why doesn't 's16' work, but 's32' does? -->
+    <DisplayString>{ptr,[length]}</DisplayString>
+    <StringView>ptr,[length]</StringView>
+</Type>
+<Type Name="beautifulcode::SharedArray&lt;char32_t,*&gt;">
+    <DisplayString>{ptr,[length]s32}</DisplayString>
+    <StringView>ptr,[length]s32</StringView>
+</Type>
+<Type Name="beautifulcode::SharedArray&lt;char32_t const,*&gt;">
+    <DisplayString>{ptr,[length]s32}</DisplayString>
+    <StringView>ptr,[length]s32</StringView>
+</Type>
+<Type Name="beautifulcode::SharedArray&lt;*&gt;">
+    <Expand>
+        <Item Name="length">length</Item>
+        <Item Name="ptr">ptr,[length]</Item>
+        <ArrayItems>
+            <Size>length</Size>
+            <ValuePointer>ptr</ValuePointer>
+        </ArrayItems>
+    </Expand>
+</Type>
+
+</AutoVisualizer>
