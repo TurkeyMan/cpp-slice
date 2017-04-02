@@ -19,13 +19,6 @@
 #include <type_traits>
 #include <cstdarg>
 
-#if !defined(SLICE_ALLOC)
-# define SLICE_ALLOC(bytes) malloc(bytes)
-#endif
-#if !defined(SLICE_FREE)
-# define SLICE_FREE(ptr) free(ptr)
-#endif
-
 namespace beautifulcode
 {
 	enum Reserve_T { Reserve };
@@ -72,13 +65,11 @@ namespace beautifulcode
 
 		template <typename... Items> Array<T, Count, IsString>& append(Items&&... items);
 
-		template <typename U> reference push_back(U &&item);
+		reference push_back(const T &item);
+		reference push_back(T &&item);
 		template <typename... Args> reference emplace_back(Args&&... args);
 		value_type pop_back();
 		void pop_back(size_t n);
-
-		reference pop_front() noexcept = delete;
-		reference pop_front(size_t n) noexcept = delete;
 
 		value_type remove(size_t i);
 		void remove(const value_type *item);
@@ -89,6 +80,15 @@ namespace beautifulcode
 		void remove_first_swap_last(const_reference item) { remove_swap_last(this->find_first(item)); }
 
 		Slice<T> get_buffer() const noexcept;
+
+		// delete unsafe base methods
+		reference pop_front() noexcept = delete;
+		Slice<value_type> pop_front(size_t n) noexcept = delete;
+
+		template <bool SkipEmptyTokens = false>
+		Slice<T> pop_token(Slice<const T> delimiters) noexcept = delete;
+//		template <bool SkipEmptyTokens = false>
+//		Slice<Slice<T>> tokenise(Slice<Slice<T>> tokens, Slice<const T> delimiters) noexcept = delete;
 
 	private:
 		template <typename U, size_t N, bool S>
@@ -129,6 +129,7 @@ namespace beautifulcode
 
 		// TODO: all these need to support construction from SomeChar<U>
 		Array() noexcept;
+		Array(nullptr_t) noexcept : Array() {}
 		Array(const Array<C, Count, true> &val) noexcept;
 		template <typename U, size_t N, bool S> Array(Array<U, N, S> &&rval) noexcept;
 		template <typename U> Array(U *ptr, size_t length) noexcept;
@@ -154,8 +155,8 @@ namespace beautifulcode
 		template <typename U> Array<C, Count, true>& sprintf(const U *format, ...) noexcept;
 		// should there be an appending sprintf?
 
-		Array<C, Count, true>& to_upper() noexcept;
-		Array<C, Count, true>& to_lower() noexcept;
+		Array<C, Count, true>& to_upper_in_place() noexcept;
+		Array<C, Count, true>& to_lower_in_place() noexcept;
 
 		template <typename U, bool S>
 		Array<C, Count, true>& url_encode(Slice<U, S> text);
@@ -303,8 +304,11 @@ namespace beautifulcode
 	template <typename... Items>
 	inline Array<T, Count, S>::Array(Concat_T, Items&&... items)
 	{
-		this->length = detail::count<value_type>(std::forward<Items>(items)...);
-		this->ptr = detail::append<value_type>(detail::alloc_array<value_type>(this->length * sizeof(value_type), detail::ArrayHeader::None), std::forward<Items>(items)...);
+		using mutable_value_type = typename std::remove_const<value_type>::type;
+		size_t length = detail::count<value_type>(std::forward<Items>(items)...);
+		reserve(length);
+		detail::append<mutable_value_type>((mutable_value_type*)this->ptr, std::forward<Items>(items)...);
+		this->length = length;
 	}
 
 	template <typename T, size_t Count, bool S>
@@ -411,6 +415,10 @@ namespace beautifulcode
 			detail::free_array(this->ptr);
 			this->ptr = nullptr;
 		}
+#if !defined(NDEBUG)
+		this->ptr = (T*)(size_t)0xFEEEFEEEFEEEFEEEull;
+		this->length = (size_t)0xFEEEFEEEFEEEFEEEull;
+#endif
 	}
 
 	template <typename T, size_t Count, bool S>
@@ -545,11 +553,17 @@ namespace beautifulcode
 	}
 
 	template <typename T, size_t Count, bool S>
-	template <typename U>
-	inline typename Array<T, Count, S>::reference Array<T, Count, S>::push_back(U &&item)
+	inline typename Array<T, Count, S>::reference Array<T, Count, S>::push_back(const T &item)
 	{
 		reserve(this->length + 1);
-		new((void*)(this->ptr + this->length)) T(std::forward<U>(item));
+		new((void*)(this->ptr + this->length)) T(item);
+		return this->ptr[this->length++];
+	}
+	template <typename T, size_t Count, bool S>
+	inline typename Array<T, Count, S>::reference Array<T, Count, S>::push_back(T &&item)
+	{
+		reserve(this->length + 1);
+		new((void*)(this->ptr + this->length)) T(std::move(item));
 		return this->ptr[this->length++];
 	}
 
@@ -575,7 +589,7 @@ namespace beautifulcode
 	template <typename T, size_t Count, bool S>
 	inline void Array<T, Count, S>::pop_back(size_t n)
 	{
-		SLICE_ASSERT(n >= this->length);
+		SLICE_ASSERT(this->length >= n);
 		for (size_t i = this->length - n; i < this->length; ++i)
 			this->ptr[i].~T();
 		this->length -= n;
@@ -710,6 +724,12 @@ namespace beautifulcode
 		inline auto count_chars(const U *str, const Args&... args) noexcept -> decltype(typename IsSomeChar<U>::type(), size_t());
 		template<typename T, typename U, bool S, typename... Args>
 		inline auto count_chars(Slice<U, S> slice, const Args&... args) noexcept -> decltype(typename IsSomeChar<U>::type(), size_t());
+#if !defined(NO_STL)
+		template<typename T, class _Ty, class _Alloc, typename... Args>
+		inline auto count_chars(const std::vector<_Ty, _Alloc> &vec, const Args&... args) noexcept -> decltype(typename IsSomeChar<_Ty>::type(), size_t());
+		template<typename T, class _Elem, class _Traits, class _Alloc, typename... Args>
+		inline size_t count_chars(const std::basic_string<_Elem, _Traits, _Alloc> &str, const Args&... args) noexcept;
+#endif
 		template<typename T, typename U, typename... Args>
 		inline auto count_chars(U item, const Args&... args) noexcept -> decltype(typename IsSomeChar<U>::type(), size_t())
 		{
@@ -725,6 +745,19 @@ namespace beautifulcode
 		{
 			return count_chars<T>(args...) + num_code_units<T>(str);
 		}
+#if !defined(NO_STL)
+		template<typename T, class _Ty, class _Alloc, typename... Args>
+		inline auto count_chars(const std::vector<_Ty, _Alloc> &vec, const Args&... args) noexcept -> decltype(typename IsSomeChar<_Ty>::type(), size_t())
+		{
+			return count_chars<T>(Slice<const _Ty>(vec.data(), vec.size()), args...);
+		}
+		template<typename T, class _Elem, class _Traits, class _Alloc, typename... Args>
+		inline size_t count_chars(const std::basic_string<_Elem, _Traits, _Alloc> &str, const Args&... args) noexcept
+		{
+			static_assert(IsSomeChar<_Elem>::value, "std::basic_string does not have character element!");
+			return count_chars<T>(Slice<const _Elem>(str.data(), str.length()), args...);
+		}
+#endif
 
 		// set of functions that append strings
 		template<typename T>
@@ -733,6 +766,12 @@ namespace beautifulcode
 		inline auto append_string(T *buffer, const U *s, const Args&... args) noexcept -> decltype(typename IsSomeChar<U>::type(), return_t_star<T>());
 		template<typename T, typename U, bool S, typename... Args>
 		inline auto append_string(T *buffer, Slice<U, S> s, const Args&... args) noexcept -> decltype(typename IsSomeChar<U>::type(), return_t_star<T>());
+#if !defined(NO_STL)
+		template<typename T, class _Ty, class _Alloc, typename... Args>
+		inline auto append_string(T *buffer, const std::vector<_Ty, _Alloc> &vec, const Args&... args) noexcept -> decltype(typename IsSomeChar<_Ty>::type(), return_t_star<T>());
+		template<typename T, class _Elem, class _Traits, class _Alloc, typename... Args>
+		inline T* append_string(T *buffer, const std::basic_string<_Elem, _Traits, _Alloc> &str, const Args&... args) noexcept;
+#endif
 		template<typename T, typename U, typename... Args>
 		inline auto append_string(T *buffer, U c, const Args&... args) noexcept -> decltype(typename IsSomeChar<U>::type(), return_t_star<T>())
 		{
@@ -769,6 +808,19 @@ namespace beautifulcode
 			append_string(buf, args...);
 			return buffer;
 		}
+#if !defined(NO_STL)
+		template<typename T, class _Ty, class _Alloc, typename... Args>
+		inline auto append_string(T *buffer, const std::vector<_Ty, _Alloc> &vec, const Args&... args) noexcept -> decltype(typename IsSomeChar<_Ty>::type(), return_t_star<T>())
+		{
+			return append_string(buffer, Slice<const _Ty>(vec.data(), vec.size()), args...);
+		}
+		template<typename T, class _Elem, class _Traits, class _Alloc, typename... Args>
+		inline T* append_string(T *buffer, const std::basic_string<_Elem, _Traits, _Alloc> &str, const Args&... args) noexcept
+		{
+			static_assert(IsSomeChar<_Elem>::value, "std::basic_string does not have character element!");
+			return append_string(buffer, Slice<const _Elem>(str.data(), str.length()), args...);
+		}
+#endif
 
 		inline int vscprintf(const char *format, va_list args) noexcept
 		{
@@ -844,9 +896,10 @@ namespace beautifulcode
 		this->reserve(numCodepoints + 1);
 		this->length = numCodepoints;
 
-		size_t len = detail::transcode_string(this->ptr, ptr, length);
+		auto buffer = (typename std::remove_const<C>::type*)this->ptr;
+		size_t len = detail::transcode_string(buffer, ptr, length);
 		assert(len == numCodepoints);
-		this->ptr[len] = 0;
+		buffer[len] = 0;
 	}
 
 	template <typename C, size_t Count>
@@ -866,8 +919,9 @@ namespace beautifulcode
 		{
 			size_t len = detail::strlen(c_str);
 			this->reserve(len + 1);
-			memcpy(this->ptr, c_str, sizeof(C) * len);
-			this->ptr[len] = 0;
+			auto ptr = (typename std::remove_const<C>::type*)this->ptr;
+			memcpy(ptr, c_str, sizeof(C) * len);
+			ptr[len] = 0;
 			this->length = len;
 		}
 		else
@@ -884,7 +938,7 @@ namespace beautifulcode
 			this->reserve(numCodepoints + 1);
 			this->length = numCodepoints;
 
-			C *ptr = this->ptr;
+			auto ptr = (typename std::remove_const<C>::type*)this->ptr;
 			while (*c_str)
 			{
 				char32_t c;
@@ -920,9 +974,12 @@ namespace beautifulcode
 	template <typename... Items>
 	inline Array<C, Count, true>::Array(Concat_T, const Items&... items) noexcept
 	{
-		this->length = detail::count_chars<value_type>(items...);
-		this->ptr = detail::append_string<value_type>(detail::alloc_array<value_type>((this->length + 1) * sizeof(value_type), detail::ArrayHeader::None), items...);
-		this->ptr[this->length] = 0;
+		using mutable_value_type = typename std::remove_const<value_type>::type;
+		size_t length = detail::count_chars<value_type>(items...);
+		reserve(length + 1);
+		detail::append_string<mutable_value_type>((mutable_value_type*)this->ptr, items...);
+		((mutable_value_type*)this->ptr)[length] = 0;
+		this->length = length;
 	}
 
 	template <typename C, size_t Count>
@@ -971,10 +1028,11 @@ namespace beautifulcode
 	template<typename... Items>
 	inline Array<C, Count, true>& Array<C, Count, true>::append(const Items&... items) noexcept
 	{
+		using mutable_value_type = typename std::remove_const<value_type>::type;
 		size_t len = this->length + detail::count_chars<value_type>(items...);
 		this->reserve(len + 1);
-		detail::append_string<value_type>((value_type*)this->ptr + this->length, items...);
-		this->ptr[len] = 0;
+		detail::append_string<mutable_value_type>((mutable_value_type*)this->ptr + this->length, items...);
+		((mutable_value_type*)this->ptr)[len] = 0;
 		this->length = len;
 		return *this;
 	}
@@ -992,7 +1050,7 @@ namespace beautifulcode
 	}
 
 	template<typename C, size_t Count>
-	inline Array<C, Count, true>& Array<C, Count, true>::to_upper() noexcept
+	inline Array<C, Count, true>& Array<C, Count, true>::to_upper_in_place() noexcept
 	{
 		for (size_t i = 0; i < this->length; ++i)
 			this->ptr[i] = detail::to_upper(this->ptr[i]);
@@ -1000,7 +1058,7 @@ namespace beautifulcode
 	}
 
 	template<typename C, size_t Count>
-	inline Array<C, Count, true>& Array<C, Count, true>::to_lower() noexcept
+	inline Array<C, Count, true>& Array<C, Count, true>::to_lower_in_place() noexcept
 	{
 		for (size_t i = 0; i < this->length; ++i)
 			this->ptr[i] = detail::to_lower(this->ptr[i]);

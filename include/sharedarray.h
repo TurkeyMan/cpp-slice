@@ -68,6 +68,17 @@ namespace beautifulcode
 		template <typename U, bool S> SharedArray<T, IsString>& operator=(SharedArray<U, S> &&rval);
 		template <typename U, size_t N, bool S> SharedArray<T, IsString>& operator=(Array<U, N, S> &&rval);
 		template <typename U, bool S> SharedArray<T, IsString>& operator=(Slice<U, S> arr);
+
+		// delete unsafe methods
+		reference pop_front() noexcept = delete;
+		Slice<value_type> pop_front(size_t n) noexcept = delete;
+		reference pop_back() noexcept = delete;
+		Slice<value_type> pop_back(size_t n) noexcept = delete;
+
+		template <bool SkipEmptyTokens = false>
+		Slice<T> pop_token(Slice<const T> delimiters) noexcept = delete;
+//		template <bool SkipEmptyTokens = false>
+//		Slice<Slice<T>> tokenise(Slice<Slice<T>> tokens, Slice<const T> delimiters) noexcept = delete;
 	};
 
 	// specialisation for strings
@@ -86,6 +97,7 @@ namespace beautifulcode
 
 		// TODO: all these need to support construction from SomeChar<U>
 		SharedArray() noexcept;
+		SharedArray(nullptr_t) noexcept : SharedArray() {}
 		SharedArray(const SharedArray<C, true> &val) noexcept;
 		template <typename U, bool S> SharedArray(const SharedArray<U, S> &val) noexcept;
 		template <typename U, bool S> SharedArray(SharedArray<U, S> &&rval) noexcept;
@@ -218,6 +230,10 @@ namespace beautifulcode
 		if (!this->ptr)
 			return;
 		clear();
+#if !defined(NDEBUG)
+		this->ptr = (T*)(size_t)0xFEEEFEEEFEEEFEEEull;
+		this->length = (size_t)0xFEEEFEEEFEEEFEEEull;
+#endif
 	}
 
 	template <typename T, bool S>
