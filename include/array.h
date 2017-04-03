@@ -150,6 +150,8 @@ namespace beautifulcode
 		template <typename U, bool S> Array<C, Count, true>& operator=(Slice<U, S> str) noexcept;
 		template <typename U> Array<C, Count, true>& operator=(const U *c_str) noexcept;
 
+		C* c_str() const noexcept { assert(this->ptr[this->length] == 0); return this->ptr; }
+
 		template <typename... Items> Array<C, Count, true>& append(const Items&... items) noexcept;
 
 		template <typename U> Array<C, Count, true>& sprintf(const U *format, ...) noexcept;
