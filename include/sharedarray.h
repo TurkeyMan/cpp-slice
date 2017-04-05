@@ -427,8 +427,8 @@ namespace beautifulcode
 			rval.ptr = nullptr;
 			rval.length = 0;
 		}
-		else
-			new(this) SharedArray<C, true>(rval.ptr, rval.length);
+		else if (rval.length)
+			new(this) Array<C, 0, true>(rval.ptr, rval.length);
 	}
 
 	template <typename C>
