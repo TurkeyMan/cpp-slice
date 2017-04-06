@@ -90,6 +90,8 @@ namespace beautifulcode
 //		template <bool SkipEmptyTokens = false>
 //		Slice<Slice<T>> tokenise(Slice<Slice<T>> tokens, Slice<const T> delimiters) noexcept = delete;
 
+		bool is_allocated() const noexcept { return local.is_allocated(this->ptr); }
+
 	private:
 		template <typename U, size_t N, bool S>
 		friend struct Array;
@@ -109,8 +111,6 @@ namespace beautifulcode
 			bool is_allocated(T *p) const noexcept { return p != nullptr; }
 		};
 		LocalBuffer<Count> local;
-
-		bool is_allocated() const noexcept { return local.is_allocated(this->ptr); }
 	};
 
 	// specialisation for strings
