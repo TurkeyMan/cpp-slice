@@ -1385,6 +1385,9 @@ namespace beautifulcode
 	template<typename C>
 	inline double Slice<C, true>::parse_float() const noexcept
 	{
+		if (this->length == 0)
+			return 0;
+
 		const C *s = this->ptr;
 		const C *end = s + this->length;
 
