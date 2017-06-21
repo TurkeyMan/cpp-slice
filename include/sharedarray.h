@@ -120,7 +120,7 @@ namespace beautifulcode
 		template <typename U, bool S> SharedArray<C, true>& operator=(Slice<U, S> str) noexcept;
 		template <typename U> SharedArray<C, true>& operator=(const U *c_str) noexcept;
 
-		C* c_str() const noexcept { assert(this->ptr[this->length] == 0); return this->ptr; }
+		C* c_str() const noexcept { assert(!this->ptr || this->ptr[this->length] == 0); return this->ptr ? this->ptr : ""; }
 	};
 
 	using SharedString = SharedArray<const char>;
